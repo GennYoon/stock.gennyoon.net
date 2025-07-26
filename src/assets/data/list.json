@@ -1,0 +1,371 @@
+[
+  {
+    "id": "1",
+    "name": "YieldMax™ TSLA Option Income Strategy ETF",
+    "ticker": "TSLY",
+    "distributionRate": 66.86,
+    "secYield": 2.76,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "2",
+    "name": "YieldMax™ MSTR Option Income Strategy ETF",
+    "ticker": "MSTY",
+    "distributionRate": 75.78,
+    "secYield": 1.76,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "3",
+    "name": "YieldMax™ Universe Fund of Option Income ETFs",
+    "ticker": "YMAX",
+    "distributionRate": 69.41,
+    "secYield": 88.53,
+    "strategy": "Fund of Funds",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "4",
+    "name": "YieldMax™ NVDA Option Income Strategy ETF",
+    "ticker": "NVDY",
+    "distributionRate": 78.19,
+    "secYield": 2.98,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "5",
+    "name": "YieldMax™ Magnificent 7 Fund of Option Income ETFs",
+    "ticker": "YMAG",
+    "distributionRate": 69.23,
+    "secYield": 66.50,
+    "strategy": "Fund of Funds",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "6",
+    "name": "YieldMax™ AAPL Option Income Strategy ETF",
+    "ticker": "APLY",
+    "distributionRate": 26.48,
+    "secYield": 3.42,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "7",
+    "name": "YieldMax™ AMZN Option Income Strategy ETF",
+    "ticker": "AMZY",
+    "distributionRate": 46.48,
+    "secYield": 3.09,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "8",
+    "name": "YieldMax™ GOOGL Option Income Strategy ETF",
+    "ticker": "GOOY",
+    "distributionRate": 31.13,
+    "secYield": 3.29,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "9",
+    "name": "YieldMax™ Target 12™ Big 50 Option Income ETF",
+    "ticker": "BIGY",
+    "distributionRate": 12.79,
+    "secYield": 0.20,
+    "strategy": "Target 12™",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "10",
+    "name": "YieldMax™ Short TSLA Option Income Strategy ETF",
+    "ticker": "CRSH",
+    "distributionRate": 60.54,
+    "secYield": 3.08,
+    "strategy": "Short Option",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "11",
+    "name": "YieldMax™ Crypto Industry & Tech Portfolio Option Income ETF",
+    "ticker": "LFGY",
+    "distributionRate": 64.44,
+    "secYield": 0.17,
+    "strategy": "Portfolio ETF",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "12",
+    "name": "YieldMax™ AI & Tech Portfolio Option Income ETF",
+    "ticker": "GPTY",
+    "distributionRate": 35.62,
+    "secYield": 0.00,
+    "strategy": "Portfolio ETF",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "13",
+    "name": "YieldMax™ META Option Income Strategy ETF",
+    "ticker": "FBY",
+    "distributionRate": 39.76,
+    "secYield": 3.21,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "14",
+    "name": "YieldMax™ COIN Option Income Strategy ETF",
+    "ticker": "CONY",
+    "distributionRate": 114.34,
+    "secYield": 3.53,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "15",
+    "name": "YieldMax™ NFLX Option Income Strategy ETF",
+    "ticker": "NFLY",
+    "distributionRate": 33.44,
+    "secYield": 2.98,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "16",
+    "name": "YieldMax™ DIS Option Income Strategy ETF",
+    "ticker": "DISO",
+    "distributionRate": 37.90,
+    "secYield": 3.16,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "17",
+    "name": "YieldMax™ Dorsey Wright Hybrid 5 Income ETF",
+    "ticker": "FIVY",
+    "distributionRate": 33.29,
+    "secYield": 35.26,
+    "strategy": "Fund of Funds",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "18",
+    "name": "YieldMax™ Bitcoin Option Income Strategy ETF",
+    "ticker": "YBIT",
+    "distributionRate": 44.73,
+    "secYield": 1.54,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "19",
+    "name": "YieldMax™ S&P 500 0DTE Covered Call Strategy ETF",
+    "ticker": "SDTY",
+    "distributionRate": 18.37,
+    "secYield": 0.00,
+    "strategy": "0DTE",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "20",
+    "name": "YieldMax™ PYPL Option Income Strategy ETF",
+    "ticker": "PYPY",
+    "distributionRate": 27.80,
+    "secYield": 3.41,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "21",
+    "name": "YieldMax™ Gold Miners Option Income Strategy ETF",
+    "ticker": "GDXY",
+    "distributionRate": 29.01,
+    "secYield": 3.38,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "22",
+    "name": "YieldMax™ MSFT Option Income Strategy ETF",
+    "ticker": "MSFO",
+    "distributionRate": 25.18,
+    "secYield": 3.44,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "23",
+    "name": "YieldMax™ XOM Option Income Strategy ETF",
+    "ticker": "XOMO",
+    "distributionRate": 22.94,
+    "secYield": 3.51,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "24",
+    "name": "YieldMax™ JPM Option Income Strategy ETF",
+    "ticker": "JPMO",
+    "distributionRate": 21.83,
+    "secYield": 3.54,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "25",
+    "name": "YieldMax™ AMD Option Income Strategy ETF",
+    "ticker": "AMDY",
+    "distributionRate": 65.24,
+    "secYield": 2.79,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "26",
+    "name": "YieldMax™ Innovation Option Income Strategy ETF",
+    "ticker": "OARK",
+    "distributionRate": 49.24,
+    "secYield": 2.88,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "27",
+    "name": "YieldMax™ SQ Option Income Strategy ETF",
+    "ticker": "SQY",
+    "distributionRate": 58.93,
+    "secYield": 2.91,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "28",
+    "name": "YieldMax™ MRNA Option Income Strategy ETF",
+    "ticker": "MRNY",
+    "distributionRate": 71.42,
+    "secYield": 2.94,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "29",
+    "name": "YieldMax™ AI Option Income Strategy ETF",
+    "ticker": "AIYY",
+    "distributionRate": 89.56,
+    "secYield": 2.67,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "30",
+    "name": "YieldMax™ TSM Option Income Strategy ETF",
+    "ticker": "TSMY",
+    "distributionRate": 34.73,
+    "secYield": 3.22,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "31",
+    "name": "YieldMax™ SMCI Option Income Strategy ETF",
+    "ticker": "SMCY",
+    "distributionRate": 95.14,
+    "secYield": 2.58,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "32",
+    "name": "YieldMax™ PLTR Option Income Strategy ETF",
+    "ticker": "PLTY",
+    "distributionRate": 87.32,
+    "secYield": 2.69,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "33",
+    "name": "YieldMax™ MARA Option Income Strategy ETF",
+    "ticker": "MARO",
+    "distributionRate": 112.45,
+    "secYield": 2.41,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "34",
+    "name": "YieldMax™ CVNA Option Income Strategy ETF",
+    "ticker": "CVNY",
+    "distributionRate": 98.76,
+    "secYield": 2.54,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "35",
+    "name": "YieldMax™ BABA Option Income Strategy ETF",
+    "ticker": "BABO",
+    "distributionRate": 52.18,
+    "secYield": 3.02,
+    "strategy": "Covered Call",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "36",
+    "name": "YieldMax™ Dorsey Wright Featured 5 Income ETF",
+    "ticker": "FEAT",
+    "distributionRate": 52.34,
+    "secYield": 3.01,
+    "strategy": "Fund of Funds",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "37",
+    "name": "YieldMax™ Short Coinbase Option Income Strategy ETF",
+    "ticker": "FIAT",
+    "distributionRate": 38.94,
+    "secYield": 3.19,
+    "strategy": "Short Option",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "38",
+    "name": "YieldMax™ Short NVIDIA Option Income Strategy ETF",
+    "ticker": "DIPS",
+    "distributionRate": 41.67,
+    "secYield": 3.16,
+    "strategy": "Short Option",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "39",
+    "name": "YieldMax™ Short Nasdaq 100 Option Income Strategy ETF",
+    "ticker": "YQQQ",
+    "distributionRate": 35.82,
+    "secYield": 3.23,
+    "strategy": "Short Option",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "40",
+    "name": "YieldMax™ Nasdaq 100 0DTE Covered Call Strategy ETF",
+    "ticker": "QDTY",
+    "distributionRate": 16.25,
+    "secYield": 0.00,
+    "strategy": "0DTE",
+    "nextPaymentDate": "2025-02-15"
+  },
+  {
+    "id": "41",
+    "name": "YieldMax™ Russell 2000 0DTE Covered Call Strategy ETF",
+    "ticker": "RDTY",
+    "distributionRate": 22.14,
+    "secYield": 0.00,
+    "strategy": "0DTE",
+    "nextPaymentDate": "2025-02-15"
+  }
+]
