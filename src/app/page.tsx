@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronDownIcon, ChevronUpIcon, ClockIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
+import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 
 interface DividendGroup {
   issuer: string;
@@ -57,16 +58,18 @@ export default function DashboardPage() {
   // 실시간 카운트다운 업데이트
   useEffect(() => {
     const updateCountdowns = () => {
+      // 현재 시간을 한국 시간대로 가져오기
       const now = new Date();
+      const nowKST = toZonedTime(now, 'Asia/Seoul');
       const newCountdowns: { [key: string]: string } = {};
 
       groups.forEach((group) => {
         if (group.next_ex_date) {
-          // 배당락일 당일 미국 장마감시간까지 계산 (배당락일 새벽 5시 또는 6시)
-          const exDate = new Date(group.next_ex_date);
-          const targetDate = new Date(exDate);
-
-          // 썸머타임 여부 확인
+          // 배당락일을 파싱하고 KST 시간대로 처리
+          const exDateStr = group.next_ex_date + 'T00:00:00';
+          const exDate = toZonedTime(new Date(exDateStr), 'Asia/Seoul');
+          
+          // 썸머타임 여부 확인 (미국 동부 시간 기준)
           const isDST = (date: Date) => {
             const year = date.getFullYear();
             const march = new Date(year, 2, 1);
@@ -84,12 +87,16 @@ export default function DashboardPage() {
             return date >= secondSunday && date < firstSunday;
           };
 
-          const isTargetDST = isDST(targetDate);
+          // 미국 동부시간 기준으로 DST 확인
+          const usEasternDate = toZonedTime(exDate, 'America/New_York');
+          const isTargetDST = isDST(usEasternDate);
+          
           // EDT: 한국시간 오전 5시, EST: 한국시간 오전 6시
           const kstHour = isTargetDST ? 5 : 6;
+          const targetDate = new Date(exDate);
           targetDate.setHours(kstHour, 0, 0, 0);
 
-          const timeLeft = targetDate.getTime() - now.getTime();
+          const timeLeft = targetDate.getTime() - nowKST.getTime();
 
           if (timeLeft > 0) {
             const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
@@ -296,8 +303,10 @@ export default function DashboardPage() {
                             배당락일:{" "}
                             {group.next_ex_date
                               ? (() => {
-                                  const exDate = new Date(group.next_ex_date);
-                                  // 썸머타임 여부 확인
+                                  const exDateStr = group.next_ex_date + 'T00:00:00';
+                                  const exDate = toZonedTime(new Date(exDateStr), 'Asia/Seoul');
+                                  
+                                  // 미국 동부시간 기준으로 DST 확인
                                   const isDST = (date: Date) => {
                                     const year = date.getFullYear();
                                     const march = new Date(year, 2, 1);
@@ -317,7 +326,8 @@ export default function DashboardPage() {
                                     );
                                   };
 
-                                  const isTargetDST = isDST(exDate);
+                                  const usEasternDate = toZonedTime(exDate, 'America/New_York');
+                                  const isTargetDST = isDST(usEasternDate);
                                   const kstHour = isTargetDST ? 5 : 6;
                                   const targetDate = new Date(exDate);
                                   targetDate.setHours(kstHour, 0, 0, 0);

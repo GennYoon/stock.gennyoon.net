@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
+import { format } from 'date-fns';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -119,20 +121,18 @@ export async function GET(request: NextRequest) {
                 if (data.results && data.results.length > 0) {
                   const dividend = data.results[0];
 
-                  // 배당락일을 한국 시간 오전 9시로 설정
-                  const exDate = new Date(
-                    dividend.ex_dividend_date + "T09:00:00+09:00",
-                  );
-                  const payDate = new Date(
-                    dividend.pay_date + "T09:00:00+09:00",
-                  );
+                  // 배당락일을 UTC로 파싱 후 한국 시간으로 변환
+                  const exDateUTC = new Date(dividend.ex_dividend_date + "T00:00:00Z");
+                  const payDateUTC = new Date(dividend.pay_date + "T00:00:00Z");
+                  
+                  // UTC를 한국 시간 오전 9시로 변환
+                  const exDate = toZonedTime(exDateUTC, 'Asia/Seoul');
+                  exDate.setHours(9, 0, 0, 0);
+                  const payDate = toZonedTime(payDateUTC, 'Asia/Seoul');
+                  payDate.setHours(9, 0, 0, 0);
 
                   // 한국 시간 기준 현재 날짜
-                  const kstNow = new Date(
-                    new Date().toLocaleString("en-US", {
-                      timeZone: "Asia/Seoul",
-                    }),
-                  );
+                  const kstNow = toZonedTime(new Date(), 'Asia/Seoul');
 
                   // dividend_frequency를 사용한 다음 배당락일 계산
                   const frequency = group.dividend_frequency || "4W";
@@ -228,13 +228,7 @@ export async function GET(request: NextRequest) {
 
             // 한국 시간으로 날짜 문자열 생성 (YYYY-MM-DD 형식)
             const formatKSTDateTime = (date: Date) => {
-              const kstDate = new Date(
-                date.toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
-              );
-              const year = kstDate.getFullYear();
-              const month = String(kstDate.getMonth() + 1).padStart(2, "0");
-              const day = String(kstDate.getDate()).padStart(2, "0");
-              return `${year}-${month}-${day}`;
+              return formatInTimeZone(date, 'Asia/Seoul', 'yyyy-MM-dd');
             };
 
             group.next_ex_date = formatKSTDateTime(nearestExDate);
