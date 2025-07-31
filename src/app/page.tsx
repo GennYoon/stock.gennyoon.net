@@ -1,231 +1,403 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCurrency } from "@/shared/hooks/use-currency";
-import { 
-  TrendingUp, 
-  DollarSign, 
-  Target, 
-  PieChart,
-  Calendar,
-  BarChart3,
-  Plus,
-  ArrowRight,
-  Wallet,
-  TrendingDown
-} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ChevronDownIcon, ChevronUpIcon, ClockIcon } from "lucide-react";
+import { format } from "date-fns";
+import { ko } from "date-fns/locale";
 
-interface DividendStats {
-  totalPortfolioValue: number;
-  monthlyDividend: number;
-  yearlyDividend: number;
-  dividendYield: number;
-  principalRecoveryRate: number;
+interface DividendGroup {
+  issuer: string;
+  group_name: string;
+  etf_count: number;
+  sample_ticker: string;
+  next_ex_date?: string;
+  next_pay_date?: string;
+  time_until_ex_date?: number;
 }
 
-export default function Home() {
-  const { formatCurrency, exchangeRate } = useCurrency();
-  
-  // Mock data for demonstration (in USD)
-  const stats: DividendStats = {
-    totalPortfolioValue: 11865, // ~$11,865 (15,420,000 KRW)
-    monthlyDividend: 69, // ~$69 (89,200 KRW)
-    yearlyDividend: 823, // ~$823 (1,070,400 KRW)
-    dividendYield: 6.94,
-    principalRecoveryRate: 23.5
+interface GroupETFs {
+  [key: string]: {
+    ticker: string;
+    name: string;
+    current_price?: number;
+    dividend_yield?: number;
+  }[];
+}
+
+export default function DashboardPage() {
+  const [groups, setGroups] = useState<DividendGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+  const [groupETFs, setGroupETFs] = useState<GroupETFs>({});
+  const [countdowns, setCountdowns] = useState<{ [key: string]: string }>({});
+
+  // 배당 그룹 데이터 로드
+  useEffect(() => {
+    const fetchGroups = async () => {
+      try {
+        const response = await fetch("/api/dividend-groups");
+        const data = await response.json();
+
+        if (data.success) {
+          setGroups(data.groups);
+        }
+      } catch (error) {
+        console.error("Failed to fetch dividend groups:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGroups();
+  }, []);
+
+  // 실시간 카운트다운 업데이트
+  useEffect(() => {
+    const updateCountdowns = () => {
+      const now = new Date();
+      const newCountdowns: { [key: string]: string } = {};
+
+      groups.forEach((group) => {
+        if (group.next_ex_date) {
+          // 배당락일 당일 미국 장마감시간까지 계산 (배당락일 새벽 5시 또는 6시)
+          const exDate = new Date(group.next_ex_date);
+          const targetDate = new Date(exDate);
+
+          // 썸머타임 여부 확인
+          const isDST = (date: Date) => {
+            const year = date.getFullYear();
+            const march = new Date(year, 2, 1);
+            const secondSunday = new Date(
+              year,
+              2,
+              8 + ((7 - march.getDay()) % 7),
+            );
+            const november = new Date(year, 10, 1);
+            const firstSunday = new Date(
+              year,
+              10,
+              1 + ((7 - november.getDay()) % 7),
+            );
+            return date >= secondSunday && date < firstSunday;
+          };
+
+          const isTargetDST = isDST(targetDate);
+          // EDT: 한국시간 오전 5시, EST: 한국시간 오전 6시
+          const kstHour = isTargetDST ? 5 : 6;
+          targetDate.setHours(kstHour, 0, 0, 0);
+
+          const timeLeft = targetDate.getTime() - now.getTime();
+
+          if (timeLeft > 0) {
+            const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+            const hours = Math.floor(
+              (timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
+            );
+            const minutes = Math.floor(
+              (timeLeft % (1000 * 60 * 60)) / (1000 * 60),
+            );
+            const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+            if (days === 0) {
+              // 당일이면 시간:분:초만 표시하고 마감 임박 표시
+              newCountdowns[`${group.issuer}-${group.group_name}`] =
+                `${hours}시간 ${minutes}분 ${seconds}초 (마감 임박)`;
+            } else {
+              newCountdowns[`${group.issuer}-${group.group_name}`] =
+                `${days}일 ${hours}시간 ${minutes}분 ${seconds}초`;
+            }
+          } else {
+            newCountdowns[`${group.issuer}-${group.group_name}`] = "매수 마감";
+          }
+        }
+      });
+
+      setCountdowns(newCountdowns);
+    };
+
+    if (groups.length > 0) {
+      updateCountdowns();
+      const interval = setInterval(updateCountdowns, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [groups]);
+
+  // 그룹 ETF 목록 로드
+  const loadGroupETFs = async (issuer: string, groupName: string) => {
+    const key = `${issuer}-${groupName}`;
+
+    if (groupETFs[key]) return; // 이미 로드됨
+
+    try {
+      const response = await fetch("/api/dividend-stocks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ issuer, group_name: groupName }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setGroupETFs((prev) => ({
+          ...prev,
+          [key]: data.stocks,
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to load group ETFs:", error);
+    }
   };
 
-  const quickActions = [
-    {
-      title: "포트폴리오 관리",
-      description: "보유 배당주 현황 및 성과 분석",
-      icon: PieChart,
-      color: "bg-blue-50 dark:bg-blue-950/30 border-blue-200/50 dark:border-blue-800/30",
-      iconColor: "text-blue-600",
-      href: "/portfolio"
-    },
-    {
-      title: "초고배당주 분석",
-      description: "고수익 배당주 발굴 및 시뮬레이션",
-      icon: TrendingUp,
-      color: "bg-green-50 dark:bg-green-950/30 border-green-200/50 dark:border-green-800/30",
-      iconColor: "text-green-600",
-      href: "/analysis"
-    },
-    {
-      title: "배당금 목표 계산기",
-      description: "월 목표 배당금 달성 전략",
-      icon: Target,
-      color: "bg-orange-50 dark:bg-orange-950/30 border-orange-200/50 dark:border-orange-800/30",
-      iconColor: "text-orange-600",
-      href: "/calculator"
-    },
-    {
-      title: "원금 회수율 추적",
-      description: "투자 원금 회수 현황 모니터링",
-      icon: Wallet,
-      color: "bg-purple-50 dark:bg-purple-950/30 border-purple-200/50 dark:border-purple-800/30",
-      iconColor: "text-purple-600",
-      href: "/recovery"
-    }
-  ];
+  // 그룹 토글
+  const toggleGroup = async (group: DividendGroup) => {
+    const key = `${group.issuer}-${group.group_name}`;
 
-  const recentDividends = [
-    { ticker: "NVDY", amount: 9.60, date: "2025-01-15", type: "수령" },
-    { ticker: "TSLY", amount: 6.85, date: "2025-01-12", type: "수령" },
-    { ticker: "CONY", amount: 11.70, date: "2025-01-10", type: "예정" },
-    { ticker: "MSTY", amount: 9.08, date: "2025-01-08", type: "예정" }
-  ];
+    if (expandedGroup === key) {
+      setExpandedGroup(null);
+    } else {
+      setExpandedGroup(key);
+      await loadGroupETFs(group.issuer, group.group_name);
+    }
+  };
+
+  // 다음 배당락일까지의 상태에 따른 스타일
+  const getTimerStyle = (nextExDate?: string) => {
+    if (!nextExDate) return "";
+
+    const exDate = new Date(nextExDate);
+    const targetDate = new Date(exDate);
+
+    // 썸머타임 여부 확인
+    const isDST = (date: Date) => {
+      const year = date.getFullYear();
+      const march = new Date(year, 2, 1);
+      const secondSunday = new Date(year, 2, 8 + ((7 - march.getDay()) % 7));
+      const november = new Date(year, 10, 1);
+      const firstSunday = new Date(year, 10, 1 + ((7 - november.getDay()) % 7));
+      return date >= secondSunday && date < firstSunday;
+    };
+
+    const isTargetDST = isDST(targetDate);
+    const kstHour = isTargetDST ? 5 : 6;
+    targetDate.setHours(kstHour, 0, 0, 0);
+
+    const now = new Date();
+    const timeLeft = targetDate.getTime() - now.getTime();
+    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+
+    if (days <= 1) return "text-red-500";
+    if (days <= 3) return "text-orange-500";
+    if (days <= 7) return "text-yellow-500";
+    return "text-green-500";
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="container mx-auto p-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-lg text-gray-900 dark:text-white">
+              배당 그룹 정보를 불러오는 중...
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-background">
-      <div className="container mx-auto px-3 md:px-4 py-6 md:py-8 section-spacing">
-        {/* Page Header */}
-        <div className="text-center space-y-2 mb-8">
-          <h1 className="text-2xl md:text-4xl font-bold toss-text-gradient">
-            배당 투자 대시보드
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="container mx-auto p-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">
+            배당 대시보드
           </h1>
-          <p className="text-muted-foreground text-sm md:text-base">
-            나만의 스마트 배당 투자 비서
+          <p className="text-gray-600 dark:text-gray-400">
+            다음 배당락일까지의 시간을 확인하고 매수 타이밍을 놓치지 마세요
           </p>
         </div>
 
-        {/* Portfolio Statistics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-          <div className="toss-metric-card text-center p-3 md:p-4">
-            <div className="text-xs text-muted-foreground font-medium mb-1">총 포트폴리오</div>
-            <div className="text-lg md:text-xl font-bold text-foreground">
-              {formatCurrency(stats.totalPortfolioValue)}
-            </div>
-            <div className="text-xs price-up font-medium">+2.3%</div>
-          </div>
-          <div className="toss-metric-card text-center p-3 md:p-4">
-            <div className="text-xs text-muted-foreground font-medium mb-1">월 배당금</div>
-            <div className="text-lg md:text-xl font-bold text-foreground">
-              {formatCurrency(stats.monthlyDividend)}
-            </div>
-            <div className="text-xs price-up font-medium">+5.2%</div>
-          </div>
-          <div className="toss-metric-card text-center p-3 md:p-4">
-            <div className="text-xs text-muted-foreground font-medium mb-1">배당 수익률</div>
-            <div className="text-lg md:text-xl font-bold text-foreground">
-              {stats.dividendYield.toFixed(1)}%
-            </div>
-            <div className="text-xs price-neutral font-medium">평균 7.1%</div>
-          </div>
-          <div className="toss-metric-card text-center p-3 md:p-4">
-            <div className="text-xs text-muted-foreground font-medium mb-1">원금 회수율</div>
-            <div className="text-lg md:text-xl font-bold text-foreground">
-              {stats.principalRecoveryRate.toFixed(1)}%
-            </div>
-            <div className="text-xs text-muted-foreground font-medium">목표 100%</div>
-          </div>
-        </div>
+        <div className="grid gap-6">
+          {groups.map((group) => {
+            const key = `${group.issuer}-${group.group_name}`;
+            const isExpanded = expandedGroup === key;
+            const countdown = countdowns[key];
+            // 배당락일과 지급일이 있으면 타이머 표시 (시간 경과 여부와 관계없이)
+            const hasTimer = group.next_ex_date && group.next_pay_date;
 
-        {/* Quick Actions */}
-        <div className="dividend-section">
-          <div className="dividend-section-header">
-            <h2 className="dividend-section-title">빠른 실행</h2>
-            <Button size="sm" className="toss-button-secondary">
-              <Plus className="h-3 w-3 mr-1" />
-              보유주 추가
-            </Button>
-          </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            {quickActions.map((action, index) => (
-              <Link key={index} href={action.href}>
-                <div className="toss-mini-card cursor-pointer group text-center hover:shadow-md">
-                  <action.icon className={`h-8 w-8 mx-auto mb-2 ${action.iconColor} group-hover:scale-110 transition-transform duration-200`} />
-                  <h3 className="font-semibold text-sm text-foreground mb-1">{action.title}</h3>
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {action.description}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
+            return (
+              <Card
+                key={key}
+                className={`transition-all duration-200 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 ${hasTimer ? "border-l-4 border-l-blue-500" : ""}`}
+              >
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <CardTitle className="text-xl text-gray-900 dark:text-white">
+                        {group.issuer}{" "}
+                        {group.issuer === "YieldMax"
+                          ? `${group.group_name}조`
+                          : group.group_name}
+                      </CardTitle>
+                      <Badge
+                        variant="secondary"
+                        className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                      >
+                        {group.etf_count}개 ETF
+                      </Badge>
+                      {hasTimer &&
+                        (() => {
+                          const timerStyle = getTimerStyle(group.next_ex_date);
+                          const key = `${group.issuer}-${group.group_name}`;
+                          const isUrgent =
+                            countdown && countdown.includes("마감 임박");
 
-        {/* Recent Dividends */}
-        <div className="dividend-section">
-          <div className="dividend-section-header">
-            <h2 className="dividend-section-title">최근 배당 내역</h2>
-            <Button size="sm" className="toss-button-secondary">
-              전체 보기
-              <ArrowRight className="h-3 w-3 ml-1" />
-            </Button>
-          </div>
-          
-          <div className="toss-card p-4 md:p-5">
-            <div className="space-y-3">
-              {recentDividends.map((dividend, index) => (
-                <div key={index} className="flex items-center justify-between p-3 md:p-4 rounded-xl bg-secondary/30 border border-border/50 hover:bg-secondary/50 transition-colors duration-200 group">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center group-hover:shadow-lg transition-shadow duration-200">
-                      <span className="text-white font-bold text-xs md:text-sm">{dividend.ticker}</span>
+                          return (
+                            <Badge
+                              variant="outline"
+                              className={`${timerStyle} border-current`}
+                            >
+                              <ClockIcon className="w-4 h-4 mr-1" />
+                              {isUrgent ? "마감 임박" : "긴급"}
+                            </Badge>
+                          );
+                        })()}
                     </div>
-                    <div>
-                      <div className="font-semibold text-sm md:text-base text-foreground">{dividend.ticker}</div>
-                      <div className="text-xs text-muted-foreground">{dividend.date}</div>
-                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-gray-700 dark:text-gray-300"
+                      onClick={() => toggleGroup(group)}
+                    >
+                      {isExpanded ? (
+                        <ChevronUpIcon className="w-4 h-4" />
+                      ) : (
+                        <ChevronDownIcon className="w-4 h-4" />
+                      )}
+                    </Button>
                   </div>
-                  <div className="text-right">
-                    <div className={`font-bold text-sm md:text-base ${dividend.type === '수령' ? 'price-up' : 'text-blue-600'}`}>
-                      {formatCurrency(dividend.amount)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">{dividend.type}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        {/* Market Overview */}
-        <div className="dividend-section">
-          <h2 className="dividend-section-title">시장 동향</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-            <div className="toss-card p-4 md:p-5 hover:shadow-md transition-shadow duration-200 border-l-4 border-l-red-500">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-red-500" />
-                  <h3 className="font-semibold text-sm md:text-base text-foreground">고배당 ETF</h3>
+                  {/* 타이머 표시 */}
+                  {hasTimer && countdown && (
+                    <div className={`mt-4 p-4 rounded-lg`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            다음 배당락일까지
+                          </div>
+                          <div className="text-2xl font-mono font-bold text-gray-900 dark:text-white">
+                            {countdown}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                            배당락일:{" "}
+                            {group.next_ex_date
+                              ? (() => {
+                                  const exDate = new Date(group.next_ex_date);
+                                  // 썸머타임 여부 확인
+                                  const isDST = (date: Date) => {
+                                    const year = date.getFullYear();
+                                    const march = new Date(year, 2, 1);
+                                    const secondSunday = new Date(
+                                      year,
+                                      2,
+                                      8 + ((7 - march.getDay()) % 7),
+                                    );
+                                    const november = new Date(year, 10, 1);
+                                    const firstSunday = new Date(
+                                      year,
+                                      10,
+                                      1 + ((7 - november.getDay()) % 7),
+                                    );
+                                    return (
+                                      date >= secondSunday && date < firstSunday
+                                    );
+                                  };
+
+                                  const isTargetDST = isDST(exDate);
+                                  const kstHour = isTargetDST ? 5 : 6;
+                                  const targetDate = new Date(exDate);
+                                  targetDate.setHours(kstHour, 0, 0, 0);
+
+                                  return format(
+                                    targetDate,
+                                    "yyyy-MM-dd HH:mm",
+                                    { locale: ko },
+                                  );
+                                })()
+                              : ""}{" "}
+                            | 지급일: {group.next_pay_date}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardHeader>
+
+                {/* 확장된 ETF 목록 */}
+                {isExpanded && (
+                  <CardContent>
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                      <h4 className="font-semibold mb-3 text-gray-900 dark:text-white">
+                        포함된 ETF 목록
+                      </h4>
+                      {groupETFs[key] ? (
+                        <div className="grid gap-2">
+                          {groupETFs[key].map((etf) => (
+                            <div
+                              key={etf.ticker}
+                              className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700"
+                            >
+                              <div>
+                                <div className="font-medium text-gray-900 dark:text-white">
+                                  {etf.ticker}
+                                </div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-xs">
+                                  {etf.name}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                {etf.current_price && (
+                                  <div className="font-medium text-gray-900 dark:text-white">
+                                    ${etf.current_price}
+                                  </div>
+                                )}
+                                {etf.dividend_yield && (
+                                  <div className="text-sm text-green-600 dark:text-green-400">
+                                    {etf.dividend_yield}% 수익률
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-4 text-gray-600 dark:text-gray-400">
+                          ETF 목록을 불러오는 중...
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            );
+          })}
+
+          {groups.length === 0 && (
+            <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <CardContent className="text-center py-12">
+                <div className="text-gray-600 dark:text-gray-400">
+                  다음 배당락일이 예정된 그룹이 없습니다.
                 </div>
-              </div>
-              <div className="text-xl md:text-2xl font-bold price-up mb-1">+2.1%</div>
-              <p className="text-xs text-muted-foreground">이번 주 평균 상승률</p>
-            </div>
-            
-            <div className="toss-card p-4 md:p-5 hover:shadow-md transition-shadow duration-200 border-l-4 border-l-blue-500">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-blue-600" />
-                  <h3 className="font-semibold text-sm md:text-base text-foreground">USD/KRW</h3>
-                </div>
-              </div>
-              <div className="text-xl md:text-2xl font-bold text-foreground mb-1">
-                {Math.round(exchangeRate).toLocaleString()}원
-              </div>
-              <p className="text-xs price-up">실시간 환율</p>
-            </div>
-            
-            <div className="toss-card p-4 md:p-5 hover:shadow-md transition-shadow duration-200 border-l-4 border-l-purple-500">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-purple-600" />
-                  <h3 className="font-semibold text-sm md:text-base text-foreground">이번 주 배당</h3>
-                </div>
-              </div>
-              <div className="text-xl md:text-2xl font-bold text-foreground mb-1">8종목</div>
-              <p className="text-xs text-muted-foreground">배당금 지급 예정</p>
-            </div>
-          </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
   );
 }
+

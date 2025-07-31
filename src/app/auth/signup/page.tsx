@@ -15,7 +15,6 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -37,7 +36,7 @@ export default function SignupPage() {
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -47,7 +46,10 @@ export default function SignupPage() {
 
       if (error) throw error
 
-      setSuccess(true)
+      // 회원가입 성공 시 바로 홈페이지로 이동 (이메일 인증 비활성화)
+      if (data.user) {
+        router.push('/')
+      }
     } catch (error: any) {
       setError(error.message || '회원가입 중 오류가 발생했습니다.')
     } finally {
@@ -55,28 +57,6 @@ export default function SignupPage() {
     }
   }
 
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-center">회원가입 완료</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-center text-muted-foreground">
-              회원가입이 완료되었습니다. 이메일을 확인하여 계정을 활성화해주세요.
-            </p>
-            <Button 
-              className="w-full" 
-              onClick={() => router.push('/auth/login')}
-            >
-              로그인 페이지로 이동
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">

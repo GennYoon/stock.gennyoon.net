@@ -3,7 +3,16 @@
     "allow": [
       "Bash(npm install:*)",
       "mcp__supabase__apply_migration",
-      "mcp__supabase__execute_sql"
+      "mcp__supabase__execute_sql",
+      "Bash(npm run dev:*)",
+      "mcp__supabase__list_tables",
+      "Bash(touch:*)",
+      "Bash(pkill:*)",
+      "mcp__supabase__list_edge_functions",
+      "Bash(rm:*)",
+      "WebFetch(domain:graniteshares.com)",
+      "WebFetch(domain:api.polygon.io)",
+      "WebFetch(domain:polygon.io)"
     ]
   },
   "enableAllProjectMcpServers": true,

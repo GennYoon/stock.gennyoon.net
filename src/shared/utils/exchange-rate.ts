@@ -1,10 +1,4 @@
 import type { ExchangeRate } from "@/shared/types";
-import { createClient } from '@supabase/supabase-js';
-
-// Supabase 클라이언트 설정
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 // API 엔드포인트들
 const EXCHANGE_RATE_API_BASE = "https://v6.exchangerate-api.com/v6";
@@ -12,9 +6,8 @@ const FREE_API_BASE = "https://api.exchangerate-api.com/v4/latest";
 const FIXER_API_BASE = "https://api.fixer.io/v1";
 const CURRENCY_API_BASE = "https://api.currencyapi.com/v3";
 
-// 캐시 설정 - 더 자주 업데이트 (15분)
-const CACHE_DURATION = 15 * 60 * 1000; // 15분 (밀리초)
-const FALLBACK_RATE = 1400; // 기본 USD/KRW 환율
+// 기본 USD/KRW 환율 (API 실패시 폴백)
+const FALLBACK_RATE = 1400;
 
 interface ExchangeRateApiResponse {
   result: string;
@@ -53,29 +46,17 @@ interface CurrencyApiResponse {
 }
 
 /**
- * 실시간 USD/KRW 환율 가져오기
+ * 실시간 USD/KRW 환율 가져오기 (캐시 없이 직접 API 호출)
  */
 export async function fetchLatestUsdKrwRate(): Promise<number> {
   try {
-    // 1. 캐시된 데이터 확인
-    const cachedRate = await getCachedExchangeRate("USD", "KRW");
-    if (cachedRate && isCacheValid(cachedRate.timestamp)) {
-      return cachedRate.rate;
-    }
-
-    // 2. API에서 새로운 데이터 가져오기
+    // API에서 직접 데이터 가져오기
     const rate = await fetchFromApi();
-
-    // 3. 데이터베이스에 저장
-    await saveExchangeRate("USD", "KRW", rate, "exchangerate-api.com");
-
     return rate;
   } catch (error) {
     console.error("환율 가져오기 실패:", error);
-
-    // 4. 폴백: 가장 최근 캐시된 데이터 사용
-    const fallbackRate = await getFallbackRate();
-    return fallbackRate;
+    // 폴백: 기본 환율 사용
+    return FALLBACK_RATE;
   }
 }
 
@@ -87,7 +68,6 @@ async function fetchFromApi(): Promise<number> {
     () => fetchFromExchangeRateApi(),
     () => fetchFromCurrencyApi(),
     () => fetchFromFixerApi(),
-    () => fetchFromFreeApi(),
     () => fetchFromFallbackApi()
   ];
 
@@ -201,94 +181,7 @@ async function fetchFromFallbackApi(): Promise<number> {
   return 1 / krwUsdRate;
 }
 
-/**
- * 캐시된 환율 데이터 가져오기 (Supabase)
- */
-async function getCachedExchangeRate(
-  fromCurrency: string,
-  toCurrency: string,
-): Promise<ExchangeRate | null> {
-  try {
-    const { data, error } = await supabase
-      .from('exchange_rates')
-      .select('*')
-      .eq('from_currency', fromCurrency)
-      .eq('to_currency', toCurrency)
-      .order('timestamp', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (error || !data) return null;
-
-    return {
-      id: data.id,
-      fromCurrency: data.from_currency,
-      toCurrency: data.to_currency,
-      rate: data.rate,
-      timestamp: data.timestamp,
-      source: data.source
-    };
-  } catch (error) {
-    console.error('캐시된 환율 데이터 가져오기 실패:', error);
-    return null;
-  }
-}
-
-/**
- * 캐시 유효성 검사
- */
-function isCacheValid(timestamp: string): boolean {
-  const cacheTime = new Date(timestamp).getTime();
-  const now = Date.now();
-  return now - cacheTime < CACHE_DURATION;
-}
-
-/**
- * 환율 데이터 저장 (Supabase)
- */
-async function saveExchangeRate(
-  fromCurrency: string,
-  toCurrency: string,
-  rate: number,
-  source: string,
-): Promise<void> {
-  try {
-    const { error } = await supabase
-      .from('exchange_rates')
-      .insert({
-        from_currency: fromCurrency,
-        to_currency: toCurrency,
-        rate,
-        timestamp: new Date().toISOString(),
-        source,
-      });
-
-    if (error) {
-      throw new Error(`데이터베이스 저장 실패: ${error.message}`);
-    }
-  } catch (error) {
-    console.error('환율 데이터 저장 실패:', error);
-    throw error;
-  }
-}
-
-/**
- * 폴백 환율 가져오기 (Supabase)
- */
-async function getFallbackRate(): Promise<number> {
-  try {
-    // 가장 최근 저장된 환율 사용
-    const latestRate = await getCachedExchangeRate("USD", "KRW");
-    if (latestRate) {
-      return latestRate.rate;
-    }
-  } catch (error) {
-    console.warn("저장된 환율 데이터 가져오기 실패:", error);
-  }
-
-  // 최후의 수단: 하드코딩된 기본값
-  return FALLBACK_RATE;
-}
+// 데이터베이스 캐싱 제거 - 실시간 API만 사용
 
 /**
  * 환율 변환 유틸리티
@@ -316,41 +209,17 @@ export async function convertCurrency(
 }
 
 /**
- * 환율 히스토리 가져오기 (Supabase)
+ * 환율 히스토리 가져오기 (제거됨 - 필요시 외부 API 사용)
  */
 export async function getExchangeRateHistory(
   fromCurrency: string,
   toCurrency: string,
   days: number = 30,
 ): Promise<ExchangeRate[]> {
-  try {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - days);
-
-    const { data, error } = await supabase
-      .from('exchange_rates')
-      .select('*')
-      .eq('from_currency', fromCurrency)
-      .eq('to_currency', toCurrency)
-      .gte('timestamp', cutoffDate.toISOString())
-      .order('timestamp', { ascending: false });
-
-    if (error) {
-      throw new Error(`환율 히스토리 조회 실패: ${error.message}`);
-    }
-
-    return (data || []).map(item => ({
-      id: item.id,
-      fromCurrency: item.from_currency,
-      toCurrency: item.to_currency,
-      rate: item.rate,
-      timestamp: item.timestamp,
-      source: item.source
-    }));
-  } catch (error) {
-    console.error('환율 히스토리 가져오기 실패:', error);
-    return [];
-  }
+  // 히스토리 데이터는 저장하지 않으므로 빈 배열 반환
+  // 필요시 외부 환율 히스토리 API 연동 가능
+  console.warn('환율 히스토리는 더 이상 저장하지 않습니다. 실시간 데이터만 사용합니다.');
+  return [];
 }
 
 /**
@@ -365,39 +234,27 @@ export interface ExchangeRateSummary {
 }
 
 /**
- * 환율 요약 정보 가져오기 (Supabase)
+ * 환율 요약 정보 가져오기 (실시간 API만 사용)
  */
 export async function getExchangeRateSummary(): Promise<ExchangeRateSummary> {
   const currentRate = await fetchLatestUsdKrwRate();
-  const latestRecord = await getCachedExchangeRate("USD", "KRW");
 
-  // 24시간 전 환율과 비교
-  const history = await getExchangeRateHistory("USD", "KRW", 2);
-  const previousRate = history.length > 1 ? history[1].rate : currentRate;
-
-  const changePercent = ((currentRate - previousRate) / previousRate) * 100;
-  let trend: "up" | "down" | "stable" = "stable";
-
-  if (Math.abs(changePercent) > 0.1) {
-    trend = changePercent > 0 ? "up" : "down";
-  }
-
+  // 히스토리 데이터가 없으므로 트렌드는 stable로 설정
   return {
     currentRate,
-    lastUpdated: latestRecord?.timestamp || new Date().toISOString(),
-    source: latestRecord?.source || "exchangerate-api.com",
-    trend,
-    changePercent,
+    lastUpdated: new Date().toISOString(),
+    source: "exchangerate-api.com",
+    trend: "stable",
+    changePercent: 0,
   };
 }
 
 /**
- * 환율 업데이트 강제 실행
+ * 환율 업데이트 강제 실행 (실시간 API 호출)
  */
 export async function forceUpdateExchangeRate(): Promise<number> {
   try {
     const rate = await fetchFromApi();
-    await saveExchangeRate("USD", "KRW", rate, "manual-update");
     return rate;
   } catch (error) {
     console.error("환율 강제 업데이트 실패:", error);
