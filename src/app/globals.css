@@ -39,36 +39,36 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
+  --background: oklch(0.098 0 0);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.125 0 0);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.125 0 0);
+  --popover-foreground: oklch(0.98 0 0);
   --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.125 0 0);
+  --secondary: oklch(0.18 0 0);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.18 0 0);
+  --muted-foreground: oklch(0.65 0 0);
+  --accent: oklch(0.18 0 0);
+  --accent-foreground: oklch(0.98 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 12%);
   --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar: oklch(0.125 0 0);
+  --sidebar-foreground: oklch(0.98 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.18 0 0);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.556 0 0);
 }
 
@@ -84,7 +84,7 @@
 
 /* Toss-style design system */
 .toss-card {
-  @apply bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-all duration-200;
+  @apply bg-card border border-border rounded-2xl shadow-sm hover:shadow-lg transition-all duration-200 backdrop-blur-sm;
 }
 
 .toss-button-primary {
@@ -92,19 +92,58 @@
 }
 
 .toss-button-secondary {
-  @apply bg-secondary hover:bg-secondary/80 text-secondary-foreground font-semibold rounded-xl px-6 py-3 transition-all duration-200 active:scale-[0.98];
+  @apply bg-secondary hover:bg-secondary/80 text-secondary-foreground font-semibold rounded-xl px-4 py-2 transition-all duration-200 active:scale-[0.98] text-sm;
 }
 
 .toss-input {
-  @apply bg-background border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 placeholder:text-muted-foreground;
+  @apply bg-input border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 placeholder:text-muted-foreground;
 }
 
 .toss-metric-card {
-  @apply bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30 border border-blue-200/50 dark:border-blue-800/50 rounded-2xl p-4 transition-all duration-200;
+  @apply bg-card border border-border rounded-2xl transition-all duration-200 hover:shadow-md;
 }
 
 .toss-text-gradient {
   @apply bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent;
+}
+
+/* Stock price colors - Toss style */
+.price-up {
+  @apply text-red-500 dark:text-red-400;
+}
+
+.price-down {
+  @apply text-blue-500 dark:text-blue-400;
+}
+
+.price-neutral {
+  @apply text-foreground;
+}
+
+/* Layout utilities - our custom spacing */
+.section-spacing {
+  @apply space-y-6 md:space-y-8;
+}
+
+.toss-compact {
+  @apply space-y-4;
+}
+
+.toss-mini-card {
+  @apply bg-card/50 border border-border rounded-xl p-3 hover:bg-card transition-all duration-200;
+}
+
+/* Custom dividend dashboard styles */
+.dividend-section {
+  @apply space-y-4;
+}
+
+.dividend-section-header {
+  @apply flex items-center justify-between mb-4;
+}
+
+.dividend-section-title {
+  @apply text-lg font-bold text-foreground;
 }
 
 @theme inline {
