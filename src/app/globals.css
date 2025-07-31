@@ -82,6 +82,11 @@
   }
 }
 
+/* Roboto font for numbers */
+.font-roboto {
+  font-family: var(--font-roboto), sans-serif;
+}
+
 /* Toss-style design system */
 .toss-card {
   @apply bg-card border border-border rounded-2xl shadow-sm hover:shadow-lg transition-all duration-200 backdrop-blur-sm;

@@ -11,6 +11,7 @@ export async function GET(
     // 쿼리 파라미터
     const timespan = searchParams.get("timespan") || "day"; // day, week, month
     const multiplier = searchParams.get("multiplier") || "1";
+    const days = searchParams.get("days"); // 최근 N일
     const from = searchParams.get("from"); // YYYY-MM-DD
     const to = searchParams.get("to"); // YYYY-MM-DD
 
@@ -23,11 +24,22 @@ export async function GET(
       );
     }
 
-    // 기본값 설정 (최근 30일)
+    // 기본값 설정
     const defaultTo = new Date().toISOString().split("T")[0];
-    const defaultFrom = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0];
+    let defaultFrom;
+    
+    if (days) {
+      // days 파라미터가 있으면 해당 일수만큼 과거로
+      const daysNum = parseInt(days);
+      defaultFrom = new Date(Date.now() - daysNum * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0];
+    } else {
+      // 기본값: 최근 30일
+      defaultFrom = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0];
+    }
 
     const fromDate = from || defaultFrom;
     const toDate = to || defaultTo;
@@ -53,20 +65,29 @@ export async function GET(
       );
     }
 
-    // 데이터 변환
-    const history = data.results.map((item: any) => ({
-      date: new Date(item.t).toISOString().split("T")[0],
-      timestamp: item.t,
-      open: item.o,
-      high: item.h,
-      low: item.l,
-      close: item.c,
-      volume: item.v,
-      vwap: item.vw,
-      transactions: item.n,
-    }));
+    // 데이터 변환 및 등락율 계산
+    const history = data.results.map((item: any, index: number) => {
+      const prevItem = data.results[index + 1]; // 이전 거래일 (역순 정렬이므로)
+      const changePercent = prevItem 
+        ? ((item.c - prevItem.c) / prevItem.c) * 100 
+        : 0;
+
+      return {
+        date: new Date(item.t).toISOString().split("T")[0],
+        timestamp: item.t,
+        open: item.o,
+        high: item.h,
+        low: item.l,
+        close: item.c,
+        volume: item.v,
+        vwap: item.vw,
+        transactions: item.n,
+        change_percent: parseFloat(changePercent.toFixed(2)),
+      };
+    });
 
     return NextResponse.json({
+      success: true,
       ticker: ticker.toUpperCase(),
       timespan,
       multiplier: parseInt(multiplier),

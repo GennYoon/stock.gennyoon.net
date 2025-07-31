@@ -2,31 +2,15 @@ import Link from "next/link";
 import { 
   Mail, 
   Github, 
-  Twitter, 
-  MessageCircle,
-  Shield,
-  FileText,
-  HelpCircle,
-  Heart
+  Twitter
 } from "lucide-react";
 
 const footerLinks = {
   product: [
-    { name: "포트폴리오 관리", href: "/portfolio" },
-    { name: "고배당 분석", href: "/analysis" },
-    { name: "목표 계산기", href: "/calculator" },
-    { name: "원금 회수 추적", href: "/recovery" },
+    { name: "배당주 랭킹", href: "/ranking" },
   ],
-  support: [
-    { name: "도움말", href: "/help", icon: HelpCircle },
-    { name: "문의하기", href: "/contact", icon: Mail },
-    { name: "버그 신고", href: "/bug-report", icon: MessageCircle },
-  ],
-  legal: [
-    { name: "개인정보처리방침", href: "/privacy", icon: Shield },
-    { name: "이용약관", href: "/terms", icon: FileText },
-    { name: "투자 유의사항", href: "/disclaimer", icon: FileText },
-  ],
+  support: [],
+  legal: [],
 };
 
 const socialLinks = [
@@ -39,7 +23,7 @@ export function Footer() {
   return (
     <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-16">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Company Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -89,50 +73,13 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Support Links */}
-          <div className="space-y-4">
-            <h4 className="font-semibold text-gray-900 dark:text-white">고객 지원</h4>
-            <ul className="space-y-3">
-              {footerLinks.support.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    href={link.href}
-                    className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-200"
-                  >
-                    <link.icon className="h-3 w-3" />
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Legal Links */}
-          <div className="space-y-4">
-            <h4 className="font-semibold text-gray-900 dark:text-white">약관 및 정책</h4>
-            <ul className="space-y-3">
-              {footerLinks.legal.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    href={link.href}
-                    className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors duration-200"
-                  >
-                    <link.icon className="h-3 w-3" />
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
         </div>
 
         {/* Bottom Section */}
         <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
-              <span>© 2024 배당투자 비서. Made with</span>
-              <Heart className="h-3 w-3 text-red-500 fill-current" />
-              <span>for investors</span>
+              <span>© 2024 배당투자 비서</span>
             </div>
             
             <div className="text-sm text-gray-600 dark:text-gray-400">

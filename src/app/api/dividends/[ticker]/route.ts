@@ -44,35 +44,36 @@ export async function GET(
 
     // 배당 데이터 변환
     const dividends = data.results.map((div: any) => ({
-      cashAmount: div.cash_amount,
+      cash_amount: div.cash_amount,
       currency: div.currency || "USD",
-      dividendType: div.dividend_type || "regular",
-      exDividendDate: div.ex_dividend_date,
+      dividend_type: div.dividend_type || "regular",
+      ex_dividend_date: div.ex_dividend_date,
       frequency: div.frequency,
-      payDate: div.pay_date,
-      recordDate: div.record_date,
-      declarationDate: div.declaration_date,
+      pay_date: div.pay_date,
+      record_date: div.record_date,
+      declaration_date: div.declaration_date,
     }));
 
     // 배당 통계 계산
     const annualDividend = dividends
       .slice(0, 12)
-      .reduce((sum: number, div: any) => sum + (div.cashAmount || 0), 0);
+      .reduce((sum: number, div: any) => sum + (div.cash_amount || 0), 0);
 
     const monthlyDividend = annualDividend / 12;
     const latestDividend = dividends[0];
 
     return NextResponse.json({
+      success: true,
       ticker: ticker.toUpperCase(),
       summary: {
         annualDividend,
         monthlyDividend,
         frequency: latestDividend?.frequency || "monthly",
-        latestDividend: latestDividend?.cashAmount || 0,
-        latestExDate: latestDividend?.exDividendDate,
-        latestPayDate: latestDividend?.payDate,
+        latestDividend: latestDividend?.cash_amount || 0,
+        latestExDate: latestDividend?.ex_dividend_date,
+        latestPayDate: latestDividend?.pay_date,
       },
-      dividends,
+      data: dividends,
       count: dividends.length,
       lastUpdated: new Date().toISOString(),
     });

@@ -12,7 +12,8 @@
       "Bash(rm:*)",
       "WebFetch(domain:graniteshares.com)",
       "WebFetch(domain:api.polygon.io)",
-      "WebFetch(domain:polygon.io)"
+      "WebFetch(domain:polygon.io)",
+      "Bash(npm run build:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

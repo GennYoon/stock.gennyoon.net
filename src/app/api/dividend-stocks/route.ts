@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     // 해당 그룹의 모든 주식 조회 (A, B, C, D조인 경우 Weekly도 포함)
     let query = supabase
       .from("dividend_stocks")
-      .select("ticker, name")
+      .select("ticker, name, group_name, dividend_frequency")
       .eq("issuer", issuer)
       .eq("is_active", true);
 
@@ -87,6 +87,8 @@ export async function POST(request: NextRequest) {
         return {
           ticker: stock.ticker,
           name: stock.name,
+          group_name: stock.group_name,
+          dividend_frequency: stock.dividend_frequency,
           current_price: current_price
             ? parseFloat(current_price.toFixed(2))
             : undefined,
@@ -97,12 +99,24 @@ export async function POST(request: NextRequest) {
       }),
     );
 
+    // ETF 정렬: Weekly 먼저, 나머지는 수익률 높은 순
+    const sortedStocks = stocksWithData.sort((a, b) => {
+      // Weekly(1W) ETF가 먼저 오도록
+      if (a.dividend_frequency === '1W' && b.dividend_frequency !== '1W') return -1;
+      if (a.dividend_frequency !== '1W' && b.dividend_frequency === '1W') return 1;
+      
+      // 둘 다 Weekly이거나 둘 다 Weekly가 아닌 경우, 수익률 높은 순으로 정렬
+      const yieldA = a.dividend_yield || 0;
+      const yieldB = b.dividend_yield || 0;
+      return yieldB - yieldA;
+    });
+
     return NextResponse.json({
       success: true,
       issuer,
       group_name,
-      stocks: stocksWithData,
-      count: stocksWithData.length,
+      stocks: sortedStocks,
+      count: sortedStocks.length,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

@@ -22,7 +22,10 @@ import {
 import Link from "next/link";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
-const navigation = [{ name: "홈", href: "/", icon: Home }];
+const navigation = [
+  { name: "홈", href: "/", icon: Home },
+  { name: "배당주 랭킹", href: "/ranking", icon: TrendingUp }
+];
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

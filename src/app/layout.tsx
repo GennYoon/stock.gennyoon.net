@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Roboto } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { CurrencyProvider } from "@/shared/hooks/use-currency";
@@ -17,6 +17,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const roboto = Roboto({
+  variable: "--font-roboto",
+  weight: ["300", "400", "500", "700"],
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   title: "배당투자 비서 - 스마트한 배당 투자 플랫폼",
   description: "포트폴리오 관리부터 고배당주 분석까지, 성공적인 배당 투자를 위한 모든 도구를 제공합니다.",
@@ -30,7 +36,7 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${roboto.variable} antialiased`}
       >
         <ThemeProvider
           attribute="class"

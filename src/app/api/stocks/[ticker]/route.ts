@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
 export async function GET(
@@ -15,187 +15,113 @@ export async function GET(
     const { ticker: tickerParam } = await params;
     ticker = tickerParam.toUpperCase();
 
-    // 주식 기본 정보 + 배당 정보 + 최신 주가 조회
+    console.log(`Fetching stock info for: ${ticker}`);
+
+    // dividend_stocks 테이블에서 기본 정보 조회
     const { data: stockData, error: stockError } = await supabase
       .from("dividend_stocks")
-      .select(
-        `
-        id,
-        ticker,
-        name,
-        exchange,
-        sector,
-        currency,
-        created_at,
-        updated_at,
-        dividend_info:dividend_info(
-          dividend_yield,
-          annual_dividend,
-          quarterly_dividend,
-          monthly_dividend,
-          dividend_frequency,
-          ex_dividend_date,
-          payment_date,
-          record_date,
-          payout_ratio,
-          dividend_growth_rate,
-          updated_at
-        ),
-        stock_prices:stock_prices(
-          current_price,
-          open_price,
-          high_price,
-          low_price,
-          volume,
-          market_cap,
-          pe_ratio,
-          price_date,
-          created_at
-        )
-      `,
-      )
+      .select("ticker, name, issuer, group_name, dividend_frequency")
       .eq("ticker", ticker)
+      .eq("is_active", true)
       .single();
 
     if (stockError || !stockData) {
+      console.log(`Stock not found in database: ${ticker}`, stockError);
       return NextResponse.json(
-        { error: "Stock not found", ticker },
+        { 
+          success: false,
+          error: "Stock not found", 
+          ticker,
+          message: `${ticker} 주식 정보를 찾을 수 없습니다.`
+        },
         { status: 404 },
       );
     }
 
-    // 배당 히스토리 조회 (최근 2년)
-    const { data: dividendHistory, error: historyError } = await supabase
-      .from("dividend_history")
-      .select(
-        `
-        dividend_amount,
-        ex_dividend_date,
-        payment_date,
-        record_date,
-        dividend_type,
-        created_at
-      `,
-      )
-      .eq("stock_id", stockData.id)
-      .gte(
-        "ex_dividend_date",
-        new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split("T")[0],
-      )
-      .order("ex_dividend_date", { ascending: false })
-      .limit(20);
+    console.log(`Found stock in database:`, stockData);
 
-    if (historyError) {
-      console.warn("배당 히스토리 조회 오류:", historyError);
+    // Polygon API로 현재가와 배당수익률 조회
+    const POLYGON_API_KEY = process.env.POLYGON_API_KEY;
+    let current_price: number | undefined;
+    let dividend_yield: number | undefined;
+
+    if (POLYGON_API_KEY) {
+      try {
+        // 현재가 조회 (최신 종가 - 더 정확함)
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const dateStr = yesterday.toISOString().split('T')[0];
+        
+        const priceResponse = await fetch(
+          `https://api.polygon.io/v2/aggs/ticker/${ticker}/range/1/day/${dateStr}/${dateStr}?adjusted=true&apikey=${POLYGON_API_KEY}`,
+          { next: { revalidate: 300 } }
+        );
+
+        if (priceResponse.ok) {
+          const priceData = await priceResponse.json();
+          if (priceData.results && priceData.results.length > 0) {
+            current_price = parseFloat(priceData.results[0].c.toFixed(2));
+          }
+        }
+
+        // 배당 정보 조회 (최근 12개월)
+        const dividendResponse = await fetch(
+          `https://api.polygon.io/v3/reference/dividends?ticker=${ticker}&limit=12&sort=ex_dividend_date&order=desc&apikey=${POLYGON_API_KEY}`,
+          { next: { revalidate: 3600 } }
+        );
+
+        if (dividendResponse.ok) {
+          const dividendData = await dividendResponse.json();
+          if (dividendData.results && dividendData.results.length > 0) {
+            const annualDividend = dividendData.results
+              .slice(0, 12)
+              .reduce((sum: number, div: any) => sum + (div.cash_amount || 0), 0);
+
+            if (current_price && annualDividend > 0) {
+              dividend_yield = parseFloat(((annualDividend / current_price) * 100).toFixed(2));
+            }
+          }
+        }
+      } catch (apiError) {
+        console.warn(`Polygon API error for ${ticker}:`, apiError);
+      }
     }
-
-    // 환율 정보 조회 (USD 주식인 경우)
-    let exchangeRate = null;
-    if (stockData.currency === "USD") {
-      const { data: rateData } = await supabase
-        .from("exchange_rates")
-        .select("rate, rate_date")
-        .eq("from_currency", "USD")
-        .eq("to_currency", "KRW")
-        .order("rate_date", { ascending: false })
-        .limit(1)
-        .single();
-
-      exchangeRate = rateData;
-    }
-
-    // 데이터 가공
-    const latestPrice = stockData.stock_prices?.[0];
-    const dividendInfo = stockData.dividend_info?.[0];
-
-    // 배당 수익률 계산 (원화 기준)
-    const currentPriceKRW =
-      stockData.currency === "USD" && exchangeRate
-        ? latestPrice?.current_price * exchangeRate.rate
-        : latestPrice?.current_price;
-
-    const annualDividendKRW =
-      stockData.currency === "USD" && exchangeRate
-        ? (dividendInfo?.annual_dividend || 0) * exchangeRate.rate
-        : dividendInfo?.annual_dividend || 0;
 
     const result = {
-      // 기본 정보
-      id: stockData.id,
       ticker: stockData.ticker,
       name: stockData.name,
-      exchange: stockData.exchange,
-      sector: stockData.sector,
-      currency: stockData.currency,
-
-      // 주가 정보
-      price: {
-        current: latestPrice?.current_price || 0,
-        currentKRW: currentPriceKRW || 0,
-        open: latestPrice?.open_price,
-        high: latestPrice?.high_price,
-        low: latestPrice?.low_price,
-        volume: latestPrice?.volume,
-        marketCap: latestPrice?.market_cap,
-        peRatio: latestPrice?.pe_ratio,
-        priceDate: latestPrice?.price_date,
-      },
-
-      // 배당 정보
-      dividend: {
-        yield: dividendInfo?.dividend_yield || 0,
-        annual: dividendInfo?.annual_dividend || 0,
-        annualKRW: annualDividendKRW,
-        quarterly: dividendInfo?.quarterly_dividend || 0,
-        monthly: dividendInfo?.monthly_dividend || 0,
-        frequency: dividendInfo?.dividend_frequency || "quarterly",
-        exDividendDate: dividendInfo?.ex_dividend_date,
-        paymentDate: dividendInfo?.payment_date,
-        recordDate: dividendInfo?.record_date,
-        payoutRatio: dividendInfo?.payout_ratio,
-        growthRate: dividendInfo?.dividend_growth_rate,
-        lastUpdated: dividendInfo?.updated_at,
-      },
-
-      // 배당 히스토리
-      dividendHistory:
-        dividendHistory?.map((history) => ({
-          amount: history.dividend_amount,
-          amountKRW:
-            stockData.currency === "USD" && exchangeRate
-              ? history.dividend_amount * exchangeRate.rate
-              : history.dividend_amount,
-          exDividendDate: history.ex_dividend_date,
-          paymentDate: history.payment_date,
-          recordDate: history.record_date,
-          type: history.dividend_type,
-        })) || [],
-
-      // 환율 정보
-      exchangeRate: exchangeRate
-        ? {
-            rate: exchangeRate.rate,
-            date: exchangeRate.rate_date,
-          }
-        : null,
-
-      // 메타 정보
-      lastUpdated: stockData.updated_at,
-      dataCreated: stockData.created_at,
+      issuer: stockData.issuer,
+      group_name: stockData.group_name,
+      dividend_frequency: stockData.dividend_frequency,
+      current_price,
+      dividend_yield,
+      description: `${stockData.issuer} ${stockData.group_name} 그룹의 ETF로, ${stockData.dividend_frequency === '1W' ? '주간' : '월간'} 배당을 지급합니다.`,
+      // 추가 정보들 (현재는 mock 데이터, 추후 실제 API 연동 필요)
+      market_cap: current_price ? Math.round(current_price * 50000000) : undefined, // 대략적인 시가총액
+      assets_under_management: current_price ? Math.round(current_price * 45000000) : undefined, // 대략적인 운용자산
+      management_company: stockData.issuer === 'YieldMax' ? 'YieldMax ETF Advisors' : stockData.issuer === 'GraniteShares' ? 'GraniteShares LLC' : stockData.issuer,
+      nav: current_price ? parseFloat((current_price * 0.998).toFixed(2)) : undefined, // NAV는 현재가의 약 99.8%
+      listing_date: '2023-01-15', // mock 데이터
+      shares_outstanding: 5000000, // mock 데이터
+      data_date: new Date().toISOString().split('T')[0] // 오늘 날짜
     };
 
+    console.log(`Returning stock data:`, result);
+
     return NextResponse.json({
-      data: result,
+      success: true,
+      stock: result,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
     console.error(`주식 상세 정보 조회 오류 (${ticker}):`, error);
     return NextResponse.json(
       {
+        success: false,
         error: "Internal Server Error",
         message: error instanceof Error ? error.message : "알 수 없는 오류",
+        ticker
       },
       { status: 500 },
     );
