@@ -1,24 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
 );
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ ticker: string }> }
+  { params }: { params: Promise<{ ticker: string }> },
 ) {
-  let ticker = '';
+  let ticker = "";
   try {
     const { ticker: tickerParam } = await params;
     ticker = tickerParam.toUpperCase();
 
     // 주식 기본 정보 + 배당 정보 + 최신 주가 조회
     const { data: stockData, error: stockError } = await supabase
-      .from('dividend_stocks')
-      .select(`
+      .from("dividend_stocks")
+      .select(
+        `
         id,
         ticker,
         name,
@@ -51,49 +52,57 @@ export async function GET(
           price_date,
           created_at
         )
-      `)
-      .eq('ticker', ticker)
+      `,
+      )
+      .eq("ticker", ticker)
       .single();
 
     if (stockError || !stockData) {
       return NextResponse.json(
-        { error: 'Stock not found', ticker },
-        { status: 404 }
+        { error: "Stock not found", ticker },
+        { status: 404 },
       );
     }
 
     // 배당 히스토리 조회 (최근 2년)
     const { data: dividendHistory, error: historyError } = await supabase
-      .from('dividend_history')
-      .select(`
+      .from("dividend_history")
+      .select(
+        `
         dividend_amount,
         ex_dividend_date,
         payment_date,
         record_date,
         dividend_type,
         created_at
-      `)
-      .eq('stock_id', stockData.id)
-      .gte('ex_dividend_date', new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-      .order('ex_dividend_date', { ascending: false })
+      `,
+      )
+      .eq("stock_id", stockData.id)
+      .gte(
+        "ex_dividend_date",
+        new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split("T")[0],
+      )
+      .order("ex_dividend_date", { ascending: false })
       .limit(20);
 
     if (historyError) {
-      console.warn('배당 히스토리 조회 오류:', historyError);
+      console.warn("배당 히스토리 조회 오류:", historyError);
     }
 
     // 환율 정보 조회 (USD 주식인 경우)
     let exchangeRate = null;
-    if (stockData.currency === 'USD') {
+    if (stockData.currency === "USD") {
       const { data: rateData } = await supabase
-        .from('exchange_rates')
-        .select('rate, rate_date')
-        .eq('from_currency', 'USD')
-        .eq('to_currency', 'KRW')
-        .order('rate_date', { ascending: false })
+        .from("exchange_rates")
+        .select("rate, rate_date")
+        .eq("from_currency", "USD")
+        .eq("to_currency", "KRW")
+        .order("rate_date", { ascending: false })
         .limit(1)
         .single();
-      
+
       exchangeRate = rateData;
     }
 
@@ -102,13 +111,15 @@ export async function GET(
     const dividendInfo = stockData.dividend_info?.[0];
 
     // 배당 수익률 계산 (원화 기준)
-    const currentPriceKRW = stockData.currency === 'USD' && exchangeRate
-      ? latestPrice?.current_price * exchangeRate.rate
-      : latestPrice?.current_price;
+    const currentPriceKRW =
+      stockData.currency === "USD" && exchangeRate
+        ? latestPrice?.current_price * exchangeRate.rate
+        : latestPrice?.current_price;
 
-    const annualDividendKRW = stockData.currency === 'USD' && exchangeRate
-      ? (dividendInfo?.annual_dividend || 0) * exchangeRate.rate
-      : dividendInfo?.annual_dividend || 0;
+    const annualDividendKRW =
+      stockData.currency === "USD" && exchangeRate
+        ? (dividendInfo?.annual_dividend || 0) * exchangeRate.rate
+        : dividendInfo?.annual_dividend || 0;
 
     const result = {
       // 기본 정보
@@ -118,7 +129,7 @@ export async function GET(
       exchange: stockData.exchange,
       sector: stockData.sector,
       currency: stockData.currency,
-      
+
       // 주가 정보
       price: {
         current: latestPrice?.current_price || 0,
@@ -139,7 +150,7 @@ export async function GET(
         annualKRW: annualDividendKRW,
         quarterly: dividendInfo?.quarterly_dividend || 0,
         monthly: dividendInfo?.monthly_dividend || 0,
-        frequency: dividendInfo?.dividend_frequency || 'quarterly',
+        frequency: dividendInfo?.dividend_frequency || "quarterly",
         exDividendDate: dividendInfo?.ex_dividend_date,
         paymentDate: dividendInfo?.payment_date,
         recordDate: dividendInfo?.record_date,
@@ -149,22 +160,26 @@ export async function GET(
       },
 
       // 배당 히스토리
-      dividendHistory: dividendHistory?.map(history => ({
-        amount: history.dividend_amount,
-        amountKRW: stockData.currency === 'USD' && exchangeRate
-          ? history.dividend_amount * exchangeRate.rate
-          : history.dividend_amount,
-        exDividendDate: history.ex_dividend_date,
-        paymentDate: history.payment_date,
-        recordDate: history.record_date,
-        type: history.dividend_type,
-      })) || [],
+      dividendHistory:
+        dividendHistory?.map((history) => ({
+          amount: history.dividend_amount,
+          amountKRW:
+            stockData.currency === "USD" && exchangeRate
+              ? history.dividend_amount * exchangeRate.rate
+              : history.dividend_amount,
+          exDividendDate: history.ex_dividend_date,
+          paymentDate: history.payment_date,
+          recordDate: history.record_date,
+          type: history.dividend_type,
+        })) || [],
 
       // 환율 정보
-      exchangeRate: exchangeRate ? {
-        rate: exchangeRate.rate,
-        date: exchangeRate.rate_date,
-      } : null,
+      exchangeRate: exchangeRate
+        ? {
+            rate: exchangeRate.rate,
+            date: exchangeRate.rate_date,
+          }
+        : null,
 
       // 메타 정보
       lastUpdated: stockData.updated_at,
@@ -175,15 +190,15 @@ export async function GET(
       data: result,
       timestamp: new Date().toISOString(),
     });
-
   } catch (error) {
     console.error(`주식 상세 정보 조회 오류 (${ticker}):`, error);
     return NextResponse.json(
-      { 
-        error: 'Internal Server Error',
-        message: error instanceof Error ? error.message : '알 수 없는 오류'
-      }, 
-      { status: 500 }
+      {
+        error: "Internal Server Error",
+        message: error instanceof Error ? error.message : "알 수 없는 오류",
+      },
+      { status: 500 },
     );
   }
 }
+

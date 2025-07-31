@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ ticker: string }> }
+  { params }: { params: Promise<{ ticker: string }> },
 ) {
   try {
     const { ticker } = await params;
@@ -10,8 +10,8 @@ export async function GET(
 
     if (!POLYGON_API_KEY) {
       return NextResponse.json(
-        { error: 'Polygon API key not configured' },
-        { status: 500 }
+        { error: "Polygon API key not configured" },
+        { status: 500 },
       );
     }
 
@@ -19,8 +19,8 @@ export async function GET(
     const response = await fetch(
       `https://api.polygon.io/v2/aggs/ticker/${ticker}/prev?adjusted=true&apikey=${POLYGON_API_KEY}`,
       {
-        next: { revalidate: 30 } // 30초 캐시
-      }
+        next: { revalidate: 30 }, // 30초 캐시
+      },
     );
 
     if (!response.ok) {
@@ -31,13 +31,13 @@ export async function GET(
 
     if (!data.results || data.results.length === 0) {
       return NextResponse.json(
-        { error: 'No current price data available' },
-        { status: 404 }
+        { error: "No current price data available" },
+        { status: 404 },
       );
     }
 
     const result = data.results[0];
-    
+
     return NextResponse.json({
       ticker: ticker.toUpperCase(),
       currentPrice: result.c, // close price
@@ -46,17 +46,17 @@ export async function GET(
       low: result.l,
       volume: result.v,
       timestamp: new Date(result.t).toISOString(),
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     });
-
   } catch (error) {
-    console.error('Current stock price error:', error);
+    console.error("Current stock price error:", error);
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch current price',
-        message: error instanceof Error ? error.message : 'Unknown error'
+      {
+        error: "Failed to fetch current price",
+        message: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
+
