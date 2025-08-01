@@ -49,9 +49,9 @@ export const CurrencyProvider = ({ children }: { children: React.ReactNode }) =>
       return `$${amount.toFixed(2)}`;
     } else {
       if (fromCurrency === 'USD') {
-        return `₩${(amount * exchangeRate).toLocaleString('ko-KR')}`;
+        return `${Math.round(amount * exchangeRate).toLocaleString('ko-KR', { maximumFractionDigits: 0 })}원`;
       }
-      return `₩${amount.toLocaleString('ko-KR')}`;
+      return `${Math.round(amount).toLocaleString('ko-KR', { maximumFractionDigits: 0 })}원`;
     }
   };
 
