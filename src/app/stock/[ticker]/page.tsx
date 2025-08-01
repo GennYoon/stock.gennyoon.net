@@ -14,6 +14,7 @@ import {
   BarChart3Icon,
   InfoIcon,
 } from "lucide-react";
+import { useCurrency } from "@/shared/hooks/use-currency";
 
 interface StockDetail {
   ticker: string;
@@ -60,6 +61,7 @@ export default function StockDetailPage() {
   const [dividendHistory, setDividendHistory] = useState<DividendData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
+  const { formatCurrency } = useCurrency();
 
   useEffect(() => {
     const fetchStockDetail = async () => {
@@ -218,7 +220,7 @@ export default function StockDetailPage() {
           <div className="flex items-baseline gap-2">
             {stock.current_price && (
               <span className="text-2xl font-bold text-gray-900 dark:text-white font-roboto">
-                ${stock.current_price}
+                {formatCurrency(stock.current_price)}
               </span>
             )}
             {stock.dividend_yield && (
@@ -243,7 +245,7 @@ export default function StockDetailPage() {
                       시가총액
                     </div>
                     <div className="text-sm font-semibold text-gray-900 dark:text-white font-roboto">
-                      ${(stock.market_cap / 1000000).toFixed(1)}M
+                      {formatCurrency(stock.market_cap / 1000000)}M
                     </div>
                   </div>
                 )}
@@ -253,7 +255,7 @@ export default function StockDetailPage() {
                       운용자산
                     </div>
                     <div className="text-sm font-semibold text-gray-900 dark:text-white font-roboto">
-                      ${(stock.assets_under_management / 1000000).toFixed(1)}M
+                      {formatCurrency(stock.assets_under_management / 1000000)}M
                     </div>
                   </div>
                 )}
@@ -273,7 +275,7 @@ export default function StockDetailPage() {
                       NAV
                     </div>
                     <div className="text-sm font-semibold text-gray-900 dark:text-white font-roboto">
-                      ${stock.nav.toFixed(2)}
+                      {formatCurrency(stock.nav)}
                     </div>
                   </div>
                 )}
@@ -378,7 +380,7 @@ export default function StockDetailPage() {
                             {formatDate(price.date)}
                           </td>
                           <td className="py-1 px-1 text-right font-medium text-gray-900 dark:text-white font-roboto">
-                            ${price.close.toFixed(2)}
+                            {formatCurrency(price.close)}
                           </td>
                           <td
                             className={`py-1 px-1 text-right font-medium font-roboto ${getPriceChangeColor(price.change_percent)}`}
@@ -390,20 +392,16 @@ export default function StockDetailPage() {
                             {(price.volume / 1000).toFixed(0)}K
                           </td>
                           <td className="py-1 px-1 text-right text-xs text-gray-500 dark:text-gray-500 font-roboto">
-                            $
-                            {((price.volume * price.close) / 1000000).toFixed(
-                              1,
-                            )}
-                            M
+                            {formatCurrency((price.volume * price.close) / 1000000)}M
                           </td>
                           <td className="py-1 px-1 text-right text-gray-600 dark:text-gray-400 font-roboto">
-                            ${price.open.toFixed(2)}
+                            {formatCurrency(price.open)}
                           </td>
                           <td className="py-1 px-1 text-right text-gray-600 dark:text-gray-400 font-roboto">
-                            ${price.high.toFixed(2)}
+                            {formatCurrency(price.high)}
                           </td>
                           <td className="py-1 px-1 text-right text-gray-600 dark:text-gray-400 font-roboto">
-                            ${price.low.toFixed(2)}
+                            {formatCurrency(price.low)}
                           </td>
                         </tr>
                       ))}
@@ -609,7 +607,7 @@ export default function StockDetailPage() {
                             {formatFullDate(dividend.pay_date)}
                           </td>
                           <td className="py-1 px-1 text-right font-bold text-green-600 dark:text-green-400 font-roboto">
-                            ${dividend.cash_amount.toFixed(4)}
+                            {formatCurrency(dividend.cash_amount)}
                           </td>
                         </tr>
                       ))}

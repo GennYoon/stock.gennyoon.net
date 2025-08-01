@@ -18,6 +18,7 @@ import {
   Bell,
   User,
   LogIn,
+  Search,
 } from "lucide-react";
 import Link from "next/link";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -89,11 +90,12 @@ export function Header() {
           <div className="flex items-center gap-3">
             {/* Search button */}
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="hidden md:flex text-gray-700 dark:text-gray-300"
+              className="hidden md:flex gap-2 h-9"
             >
-              검색
+              <Search className="h-4 w-4" />
+              <span className="hidden lg:inline">검색</span>
             </Button>
 
             {/* Currency toggle */}
@@ -101,12 +103,17 @@ export function Header() {
 
             {/* Notifications */}
             <Button
-              variant="ghost"
-              size="sm"
-              className="hidden md:flex text-gray-700 dark:text-gray-300"
+              variant="outline"
+              size="icon"
+              className="hidden md:flex"
+              title="알림"
             >
-              <Bell className="h-4 w-4" />
+              <Bell className="h-[1.2rem] w-[1.2rem]" />
+              <span className="sr-only">알림</span>
             </Button>
+
+            {/* Theme toggle */}
+            <ThemeToggle />
 
             {/* Auth buttons */}
             <div className="hidden md:flex items-center gap-2">
@@ -121,21 +128,20 @@ export function Header() {
               )}
             </div>
 
-            {/* Theme toggle */}
-            <ThemeToggle />
-
             {/* Mobile menu button */}
             <Button
-              variant="ghost"
-              size="sm"
-              className="lg:hidden text-gray-700 dark:text-gray-300"
+              variant="outline"
+              size="icon"
+              className="lg:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              title="메뉴"
             >
               {mobileMenuOpen ? (
-                <X className="h-5 w-5" />
+                <X className="h-[1.2rem] w-[1.2rem]" />
               ) : (
-                <Menu className="h-5 w-5" />
+                <Menu className="h-[1.2rem] w-[1.2rem]" />
               )}
+              <span className="sr-only">메뉴</span>
             </Button>
           </div>
         </div>

@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from './ui/button'
 import { LogOut, User } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 export default function AuthButton() {
@@ -51,9 +51,12 @@ export default function AuthButton() {
       size="sm"
       onClick={handleSignOut}
       disabled={loading}
+      className="gap-2 h-9"
     >
-      <LogOut className="h-4 w-4 mr-2" />
-      {loading ? '로그아웃 중...' : '로그아웃'}
+      <LogOut className="h-4 w-4" />
+      <span className="hidden sm:inline">
+        {loading ? '로그아웃 중...' : '로그아웃'}
+      </span>
     </Button>
   )
 }

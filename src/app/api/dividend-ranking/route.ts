@@ -14,8 +14,12 @@ interface DividendStock {
   group_name: string;
   dividend_frequency: string;
   current_price?: number;
+  three_months_ago_price?: number;
+  six_months_ago_price?: number;
   dividend_yield?: number;
   quarterly_dividend_income?: number;
+  six_month_dividend_income?: number;
+  dividends_data?: any[];
   next_ex_date?: string;
   next_pay_date?: string;
 }
@@ -52,8 +56,12 @@ export async function GET(request: NextRequest) {
     const stocksWithData = await Promise.all(
       stocks.map(async (stock) => {
         let current_price: number | undefined;
+        let three_months_ago_price: number | undefined;
+        let six_months_ago_price: number | undefined;
         let dividend_yield: number | undefined;
         let quarterly_dividend_income: number | undefined;
+        let six_month_dividend_income: number | undefined;
+        let dividends_data: any[] = [];
         let next_ex_date: string | undefined;
         let next_pay_date: string | undefined;
 
@@ -71,6 +79,54 @@ export async function GET(request: NextRequest) {
             }
           }
 
+          // 3개월 전 주가 조회 (약간의 범위를 두어 주말/휴일 고려)
+          const threeMonthsAgo = new Date();
+          threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+          const threeMonthsAgoEnd = new Date(threeMonthsAgo);
+          threeMonthsAgo.setDate(threeMonthsAgo.getDate() - 5); // 5일 전부터
+          threeMonthsAgoEnd.setDate(threeMonthsAgoEnd.getDate() + 5); // 5일 후까지
+          
+          const threeMonthsFromDate = threeMonthsAgo.toISOString().split('T')[0];
+          const threeMonthsToDate = threeMonthsAgoEnd.toISOString().split('T')[0];
+
+          const threeMonthsPriceResponse = await fetch(
+            `https://api.polygon.io/v2/aggs/ticker/${stock.ticker}/range/1/day/${threeMonthsFromDate}/${threeMonthsToDate}?adjusted=true&sort=asc&limit=1&apikey=${POLYGON_API_KEY}`,
+            { next: { revalidate: 3600 } }
+          );
+
+          if (threeMonthsPriceResponse.ok) {
+            const threeMonthsData = await threeMonthsPriceResponse.json();
+            if (threeMonthsData.results && threeMonthsData.results.length > 0) {
+              three_months_ago_price = parseFloat(threeMonthsData.results[0].c.toFixed(2));
+            }
+          }
+
+          // 6개월 전 주가 조회 (약간의 범위를 두어 주말/휴일 고려)
+          const sixMonthsAgo = new Date();
+          sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+          const sixMonthsAgoEnd = new Date(sixMonthsAgo);
+          sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 5); // 5일 전부터
+          sixMonthsAgoEnd.setDate(sixMonthsAgoEnd.getDate() + 5); // 5일 후까지
+          
+          const sixMonthsFromDate = sixMonthsAgo.toISOString().split('T')[0];
+          const sixMonthsToDate = sixMonthsAgoEnd.toISOString().split('T')[0];
+
+          console.log(`${stock.ticker}: 6M price range: ${sixMonthsFromDate} to ${sixMonthsToDate}`);
+
+          const sixMonthsPriceResponse = await fetch(
+            `https://api.polygon.io/v2/aggs/ticker/${stock.ticker}/range/1/day/${sixMonthsFromDate}/${sixMonthsToDate}?adjusted=true&sort=asc&limit=1&apikey=${POLYGON_API_KEY}`,
+            { next: { revalidate: 3600 } }
+          );
+
+          if (sixMonthsPriceResponse.ok) {
+            const sixMonthsData = await sixMonthsPriceResponse.json();
+            console.log(`${stock.ticker}: 6M price response:`, sixMonthsData);
+            if (sixMonthsData.results && sixMonthsData.results.length > 0) {
+              six_months_ago_price = parseFloat(sixMonthsData.results[0].c.toFixed(2));
+              console.log(`${stock.ticker}: 6M price: ${six_months_ago_price}`);
+            }
+          }
+
           // 배당 정보 조회 (최근 20개 배당 기록)
           const dividendResponse = await fetch(
             `https://api.polygon.io/v3/reference/dividends?ticker=${stock.ticker}&limit=20&sort=ex_dividend_date&order=desc&apikey=${POLYGON_API_KEY}`,
@@ -82,6 +138,7 @@ export async function GET(request: NextRequest) {
             
             if (dividendData.results && dividendData.results.length > 0) {
               const dividends = dividendData.results;
+              dividends_data = dividends; // 모든 배당금 데이터 저장
               const latestDividend = dividends[0];
 
               // 연간 배당 수익률 계산 (최근 12개월 기준)
@@ -101,35 +158,46 @@ export async function GET(request: NextRequest) {
                 dividend_yield = (annualDividend / current_price) * 100;
               }
 
-              // 3개월 배당 수익 계산 ($1000 기준)
-              if (current_price && latestDividend.cash_amount) {
-                const sharesFor1000 = 1000 / current_price;
-                const dividendPerShare = latestDividend.cash_amount;
+              // 3개월 배당 수익 계산 ($1000 기준 - 3개월 전 주가로 계산)
+              if (three_months_ago_price && dividends.length > 0) {
+                const sharesFor1000 = 1000 / three_months_ago_price;
                 
-                // 배당 빈도에 따른 3개월간 배당 횟수 계산
-                let paymentsIn3Months = 0;
-                switch (stock.dividend_frequency) {
-                  case "1W":
-                    paymentsIn3Months = 13; // 주간 배당: 3개월 = 약 13주
-                    break;
-                  case "4W":
-                  case "1M":
-                    paymentsIn3Months = 3; // 월간 배당: 3개월 = 3회
-                    break;
-                  case "3M":
-                    paymentsIn3Months = 1; // 분기 배당: 3개월 = 1회
-                    break;
-                  case "6M":
-                    paymentsIn3Months = 0.5; // 반년 배당: 3개월 = 0.5회
-                    break;
-                  case "1Y":
-                    paymentsIn3Months = 0.25; // 연간 배당: 3개월 = 0.25회
-                    break;
-                  default:
-                    paymentsIn3Months = 3; // 기본값: 월간으로 가정
-                }
+                const threeMonthsAgoPeriod = new Date();
+                threeMonthsAgoPeriod.setMonth(threeMonthsAgoPeriod.getMonth() - 3);
+                
+                const threeMonthDividends = dividends.filter((div: any) => 
+                  new Date(div.ex_dividend_date) >= threeMonthsAgoPeriod
+                );
 
-                quarterly_dividend_income = sharesFor1000 * dividendPerShare * paymentsIn3Months;
+                const totalDividendPerShare3M = threeMonthDividends.reduce(
+                  (sum: number, div: any) => sum + (div.cash_amount || 0),
+                  0
+                );
+
+                quarterly_dividend_income = sharesFor1000 * totalDividendPerShare3M;
+              }
+
+              // 6개월 배당 수익 계산 ($1000 기준 - 6개월 전 주가로 계산)
+              if (six_months_ago_price && dividends.length > 0) {
+                const sharesFor1000 = 1000 / six_months_ago_price;
+                
+                const sixMonthsAgoPeriod = new Date();
+                sixMonthsAgoPeriod.setMonth(sixMonthsAgoPeriod.getMonth() - 6);
+                
+                const sixMonthDividends = dividends.filter((div: any) => 
+                  new Date(div.ex_dividend_date) >= sixMonthsAgoPeriod
+                );
+
+                const totalDividendPerShare6M = sixMonthDividends.reduce(
+                  (sum: number, div: any) => sum + (div.cash_amount || 0),
+                  0
+                );
+
+                six_month_dividend_income = sharesFor1000 * totalDividendPerShare6M;
+                
+                console.log(`${stock.ticker}: 6M calc - price: ${six_months_ago_price}, shares: ${sharesFor1000}, dividends: ${sixMonthDividends.length}, total div/share: ${totalDividendPerShare6M}, result: ${six_month_dividend_income}`);
+              } else {
+                console.log(`${stock.ticker}: 6M calc failed - price: ${six_months_ago_price}, dividends: ${dividends.length}`);
               }
 
               // 다음 배당락일과 지급일 계산
@@ -216,6 +284,7 @@ export async function GET(request: NextRequest) {
               next_pay_date = formatInTimeZone(nextPayDate, 'Asia/Seoul', 'yyyy-MM-dd');
               
               console.log(`${stock.ticker}: Latest ex-date: ${latestDividend.ex_dividend_date}, Next ex-date: ${next_ex_date}`);
+              console.log(`${stock.ticker}: 3M dividend: ${quarterly_dividend_income}, 6M dividend: ${six_month_dividend_income}`);
             }
           }
         } catch (error) {
@@ -230,15 +299,19 @@ export async function GET(request: NextRequest) {
           group_name: stock.group_name,
           dividend_frequency: stock.dividend_frequency,
           current_price,
+          three_months_ago_price,
+          six_months_ago_price,
           dividend_yield: dividend_yield ? parseFloat(dividend_yield.toFixed(2)) : undefined,
           quarterly_dividend_income: quarterly_dividend_income ? parseFloat(quarterly_dividend_income.toFixed(2)) : undefined,
+          six_month_dividend_income: six_month_dividend_income ? parseFloat(six_month_dividend_income.toFixed(2)) : undefined,
+          dividends_data,
           next_ex_date,
           next_pay_date,
         } as DividendStock;
       })
     );
 
-    // 3개월 배당 수익 기준으로 내림차순 정렬
+    // 지정된 기간 배당 수익 기준으로 내림차순 정렬
     const rankedStocks = stocksWithData
       .filter(stock => stock.quarterly_dividend_income !== undefined && stock.quarterly_dividend_income > 0)
       .sort((a, b) => (b.quarterly_dividend_income || 0) - (a.quarterly_dividend_income || 0));

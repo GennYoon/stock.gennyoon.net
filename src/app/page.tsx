@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 import Link from "next/link";
+import { useCurrency } from "@/shared/hooks/use-currency";
 
 interface DividendGroup {
   issuer: string;
@@ -39,6 +40,7 @@ export default function DashboardPage() {
   const [countdowns, setCountdowns] = useState<{ [key: string]: string }>({});
   const [loadingETFs, setLoadingETFs] = useState<{ [key: string]: boolean }>({});
   const [errorETFs, setErrorETFs] = useState<{ [key: string]: string }>({});
+  const { formatCurrency } = useCurrency();
 
   // 배당 그룹 데이터 로드
   useEffect(() => {
@@ -501,7 +503,7 @@ export default function DashboardPage() {
                               <div className="text-right ml-2 flex-shrink-0">
                                 {etf.current_price && (
                                   <div className="font-medium text-xs md:text-sm text-gray-900 dark:text-white">
-                                    ${etf.current_price}
+                                    {formatCurrency(etf.current_price)}
                                   </div>
                                 )}
                                 {etf.dividend_yield && (
@@ -629,7 +631,7 @@ export default function DashboardPage() {
                                         <div className="text-right ml-2 flex-shrink-0">
                                           {etf.current_price && (
                                             <div className="font-medium text-xs text-gray-900 dark:text-white">
-                                              ${etf.current_price}
+                                              {formatCurrency(etf.current_price)}
                                             </div>
                                           )}
                                           {etf.dividend_yield && (
