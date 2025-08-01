@@ -236,56 +236,11 @@ export default function RankingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-6 overflow-x-hidden">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">
             배당주 랭킹
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            12개월 총 수익률 랭킹 (배당수익 + 주가수익)
-          </p>
-          
-          {/* 점수 범례 */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
-            <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">📊 점수 해석 가이드</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 bg-purple-600 rounded-full"></span>
-                  <span className="text-purple-700 dark:text-purple-300 font-medium">80~100점: 🔥 최우수</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 bg-purple-500 rounded-full"></span>
-                  <span className="text-purple-600 dark:text-purple-400 font-medium">60~79점: ⭐ 우수</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 bg-purple-400 rounded-full"></span>
-                  <span className="text-purple-500 dark:text-purple-500 font-medium">40~59점: 👍 양호</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 bg-gray-400 rounded-full"></span>
-                  <span className="text-gray-600 dark:text-gray-400 font-medium">0~39점: 😐 저조</span>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 bg-red-400 rounded-full"></span>
-                  <span className="text-red-600 dark:text-red-400 font-medium">-1~-39점: 😟 손실</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 bg-red-500 rounded-full"></span>
-                  <span className="text-red-700 dark:text-red-300 font-medium">-40~-79점: 😰 큰손실</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 bg-red-600 rounded-full"></span>
-                  <span className="text-red-800 dark:text-red-200 font-medium">-80~-100점: 💀 위험</span>
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  12개월 기준 총 수익률 = (현재주가 + 받은배당금 - 초기주가) ÷ 초기주가
-                </div>
-              </div>
-            </div>
-          </div>
 
           {/* 수익률 표시 설명 */}
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4">
@@ -378,18 +333,18 @@ export default function RankingPage() {
             {filteredStocks.map((stock, index) => (
               <Card
                 key={stock.ticker}
-                className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow !py-0"
+                className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow !py-0 overflow-hidden"
               >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
+                <CardContent className="p-4 overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                     {/* 랭킹 및 기본 정보 */}
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-7 h-7 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold rounded-full text-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="flex items-center justify-center w-7 h-7 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold rounded-full text-sm flex-shrink-0">
                         {index + 1}
                       </div>
 
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <Link href={`/stock/${stock.ticker}`}>
                             <h3 className="font-bold text-base text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors">
                               {stock.ticker}
@@ -411,7 +366,7 @@ export default function RankingPage() {
                           </Badge>
                         </div>
 
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 break-words">
                           {stock.name}
                         </p>
 
@@ -449,98 +404,105 @@ export default function RankingPage() {
                     </div>
 
                     {/* 총합 점수 정보 */}
-                    <div className="text-right">
-                      {/* 총 점수 */}
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                          총 점수
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <span className={`text-lg font-bold ${getScoreColor(stock.total_score)}`}>
-                            {getScoreEmoji(stock.total_score)} {stock.total_score?.toFixed(1) || "0.0"}점
+                    <div className="sm:text-right pl-10 sm:pl-0 border-t pt-3 sm:border-0 sm:pt-0 dark:border-gray-700">
+                      {/* 모바일에서 순위 번호 공간만큼 왼쪽 패딩 추가 */}
+                      <div className="flex flex-col gap-1">
+                        {/* 총 점수 - 모바일에서는 좌우 배치 */}
+                        <div className="flex justify-between items-center sm:flex-col sm:items-end sm:gap-1">
+                          <span className="text-sm sm:text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                            총 점수
                           </span>
-                          {getTrendIcon(stock.dividend_trend)}
+                          <div className="flex items-center gap-1">
+                            <span className={`text-lg font-bold ${getScoreColor(stock.total_score)}`}>
+                              {getScoreEmoji(stock.total_score)} {stock.total_score?.toFixed(1) || "0.0"}점
+                            </span>
+                            {getTrendIcon(stock.dividend_trend)}
+                          </div>
                         </div>
-                      </div>
 
-                      {/* 총 수익률 */}
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-1">
-                        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                          총 수익률
-                        </span>
-                        <span
-                          className={`text-lg font-bold ${
-                            (stock.total_return_rate || 0) >= 0
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-red-600 dark:text-red-400"
-                          }`}
-                        >
-                          {(stock.total_return_rate || 0) >= 0 ? "+" : ""}
-                          {stock.total_return_rate?.toFixed(2) || "0.00"}%
-                        </span>
-                      </div>
+                        {/* 총 수익률 - 모바일에서는 좌우 배치 */}
+                        <div className="flex justify-between items-center sm:flex-col sm:items-end sm:gap-1">
+                          <span className="text-sm sm:text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                            총 수익률
+                          </span>
+                          <span
+                            className={`text-lg font-bold ${
+                              (stock.total_return_rate || 0) >= 0
+                                ? "text-green-600 dark:text-green-400"
+                                : "text-red-600 dark:text-red-400"
+                            }`}
+                          >
+                            {(stock.total_return_rate || 0) >= 0 ? "+" : ""}
+                            {stock.total_return_rate?.toFixed(2) || "0.00"}%
+                          </span>
+                        </div>
 
-                      {/* 세부 수익률 */}
-                      <div className="text-xs mb-2">
-                        <span className="text-gray-500 dark:text-gray-400">
-                          배당{" "}
-                        </span>
-                        <span
-                          className={`${
-                            (stock.dividend_return_rate || 0) >= 0
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-red-600 dark:text-red-400"
-                          }`}
-                        >
-                          {stock.dividend_return_rate?.toFixed(1) || "0.0"}%
-                        </span>
-                        <span className="text-gray-500 dark:text-gray-400">
-                          {" "}
-                          | 주가{" "}
-                        </span>
-                        <span
-                          className={`${
-                            (stock.stock_price_return_rate || 0) >= 0
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-red-600 dark:text-red-400"
-                          }`}
-                        >
-                          {(stock.stock_price_return_rate || 0) >= 0 ? "+" : ""}
-                          {stock.stock_price_return_rate?.toFixed(1) || "0.0"}%
-                        </span>
-                        <br />
-                        <span className="text-gray-500 dark:text-gray-400">
-                          {stock.calculation_period_count || 0}회 배당 기준
-                          {stock.trend_percentage && (
+                        {/* 세부 수익률 */}
+                        <div className="text-xs border-t pt-2 mt-2 dark:border-gray-700 text-right sm:text-right">
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">
+                              배당{" "}
+                            </span>
                             <span
-                              className={`ml-1 ${
-                                stock.trend_percentage > 0
+                              className={`${
+                                (stock.dividend_return_rate || 0) >= 0
                                   ? "text-green-600 dark:text-green-400"
-                                  : stock.trend_percentage < 0
-                                    ? "text-red-600 dark:text-red-400"
-                                    : "text-gray-500"
+                                  : "text-red-600 dark:text-red-400"
                               }`}
                             >
-                              ({stock.trend_percentage > 0 ? "+" : ""}
-                              {stock.trend_percentage.toFixed(1)}%)
+                              {stock.dividend_return_rate?.toFixed(1) || "0.0"}%
+                            </span>
+                            <span className="text-gray-500 dark:text-gray-400">
+                              {" "}
+                              | 주가{" "}
+                            </span>
+                            <span
+                              className={`${
+                                (stock.stock_price_return_rate || 0) >= 0
+                                  ? "text-green-600 dark:text-green-400"
+                                  : "text-red-600 dark:text-red-400"
+                              }`}
+                            >
+                              {(stock.stock_price_return_rate || 0) >= 0 ? "+" : ""}
+                              {stock.stock_price_return_rate?.toFixed(1) || "0.0"}%
+                            </span>
+                          </div>
+                          <div className="mt-1">
+                            <span className="text-gray-500 dark:text-gray-400">
+                              {stock.calculation_period_count || 0}회 배당 기준
+                              {stock.trend_percentage && (
+                                <span
+                                  className={`ml-1 ${
+                                    stock.trend_percentage > 0
+                                      ? "text-green-600 dark:text-green-400"
+                                      : stock.trend_percentage < 0
+                                        ? "text-red-600 dark:text-red-400"
+                                        : "text-gray-500"
+                                  }`}
+                                >
+                                  ({stock.trend_percentage > 0 ? "+" : ""}
+                                  {stock.trend_percentage.toFixed(1)}%)
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* 현재가 및 배당수익률 */}
+                        <div className="flex items-center justify-end gap-2 border-t pt-2 dark:border-gray-700">
+                          {stock.current_price && (
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              {formatCurrency(stock.current_price)}
                             </span>
                           )}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-end gap-2">
-                        {stock.current_price && (
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">
-                            {formatCurrency(stock.current_price)}
-                          </span>
-                        )}
-                        {stock.dividend_yield && (
-                          <Badge
-                            className={getYieldBadgeColor(stock.dividend_yield)}
-                          >
-                            {stock.dividend_yield.toFixed(2)}%
-                          </Badge>
-                        )}
+                          {stock.dividend_yield && (
+                            <Badge
+                              className={getYieldBadgeColor(stock.dividend_yield)}
+                            >
+                              {stock.dividend_yield.toFixed(2)}%
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
