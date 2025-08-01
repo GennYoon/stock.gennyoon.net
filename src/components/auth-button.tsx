@@ -3,8 +3,16 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, User } from 'lucide-react'
+import { LogOut, User, Settings, PieChart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import Link from 'next/link'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 export default function AuthButton() {
@@ -46,17 +54,36 @@ export default function AuthButton() {
   }
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={handleSignOut}
-      disabled={loading}
-      className="gap-2 h-9"
-    >
-      <LogOut className="h-4 w-4" />
-      <span className="hidden sm:inline">
-        {loading ? '로그아웃 중...' : '로그아웃'}
-      </span>
-    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon" className="h-9 w-9">
+          <User className="h-4 w-4" />
+          <span className="sr-only">마이페이지</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <Link href="/profile">
+          <DropdownMenuItem>
+            <Settings className="h-4 w-4" />
+            내정보
+          </DropdownMenuItem>
+        </Link>
+        <Link href="/portfolio">
+          <DropdownMenuItem>
+            <PieChart className="h-4 w-4" />
+            내주식
+          </DropdownMenuItem>
+        </Link>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem 
+          variant="destructive"
+          onClick={handleSignOut}
+          disabled={loading}
+        >
+          <LogOut className="h-4 w-4" />
+          {loading ? '로그아웃 중...' : '로그아웃'}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

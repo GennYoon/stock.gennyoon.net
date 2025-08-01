@@ -18,7 +18,6 @@ import {
   Bell,
   User,
   LogIn,
-  Search,
 } from "lucide-react";
 import Link from "next/link";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -88,16 +87,6 @@ export function Header() {
 
           {/* Right side actions */}
           <div className="flex items-center gap-3">
-            {/* Search button */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden md:flex gap-2 h-9"
-            >
-              <Search className="h-4 w-4" />
-              <span className="hidden lg:inline">검색</span>
-            </Button>
-
             {/* Currency toggle */}
             <CurrencyToggle />
 

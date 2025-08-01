@@ -4,11 +4,13 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   ChevronDownIcon,
   ChevronUpIcon,
   ClockIcon,
   TrendingUpIcon,
+  SearchIcon,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -31,10 +33,12 @@ interface DividendStock {
 
 export default function DashboardPage() {
   const [stocks, setStocks] = useState<DividendStock[]>([]);
+  const [filteredStocks, setFilteredStocks] = useState<DividendStock[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [countdowns, setCountdowns] = useState<{ [key: string]: string }>({});
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  const [searchTicker, setSearchTicker] = useState<string>("");
   const { formatCurrency } = useCurrency();
 
   // 배당주 데이터 로드
@@ -47,6 +51,7 @@ export default function DashboardPage() {
 
         if (data.success) {
           setStocks(data.stocks);
+          setFilteredStocks(data.stocks);
         } else {
           throw new Error(data.message || "Failed to fetch dividend stocks");
         }
@@ -71,6 +76,18 @@ export default function DashboardPage() {
 
     return () => clearInterval(timer);
   }, []);
+
+  // 티커 검색 필터링
+  useEffect(() => {
+    if (!searchTicker.trim()) {
+      setFilteredStocks(stocks);
+    } else {
+      const filtered = stocks.filter((stock) =>
+        stock.ticker.toLowerCase().includes(searchTicker.toLowerCase()),
+      );
+      setFilteredStocks(filtered);
+    }
+  }, [stocks, searchTicker]);
 
   // 실시간 카운트다운 계산
   const getCountdown = (exDateString?: string) => {
@@ -249,8 +266,35 @@ export default function DashboardPage() {
           </p>
         </div>
 
+        {/* 검색창 - Sticky */}
+        <div className="sticky top-16 z-10 bg-gray-50 dark:bg-gray-900 py-3 mb-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="relative">
+            <SearchIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-400 z-10 pointer-events-none" />
+            <Input
+              type="text"
+              placeholder="티커 검색 (예: ULTY, NVDY, MSTY...)"
+              value={searchTicker}
+              onChange={(e) => setSearchTicker(e.target.value)}
+              className="!pl-12 !pr-10"
+            />
+            {searchTicker && (
+              <button
+                onClick={() => setSearchTicker("")}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {searchTicker && (
+            <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+              "{searchTicker}" 검색 결과: {filteredStocks.length}개 ETF
+            </div>
+          )}
+        </div>
+
         <div className="grid gap-2 md:gap-3">
-          {stocks.map((stock) => {
+          {filteredStocks.map((stock) => {
             const countdown = getCountdown(stock.next_ex_date);
             const urgencyBadge = getUrgencyBadge(stock.next_ex_date);
             const hasUpcomingDividend =
@@ -333,11 +377,13 @@ export default function DashboardPage() {
             );
           })}
 
-          {stocks.length === 0 && (
+          {filteredStocks.length === 0 && !loading && (
             <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               <CardContent className="text-center py-8">
                 <div className="text-sm text-gray-600 dark:text-gray-400">
-                  배당주 정보가 없습니다.
+                  {searchTicker
+                    ? `"${searchTicker}" 검색 결과가 없습니다.`
+                    : "배당주 정보가 없습니다."}
                 </div>
               </CardContent>
             </Card>
