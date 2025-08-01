@@ -16,6 +16,7 @@ import {
   DollarSignIcon,
   CalendarIcon,
   FilterIcon,
+  ClockIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useCurrency } from "@/shared/hooks/use-currency";
@@ -27,11 +28,18 @@ interface DividendStock {
   group_name: string;
   dividend_frequency: string;
   current_price?: number;
-  three_months_ago_price?: number;
-  six_months_ago_price?: number;
   dividend_yield?: number;
-  quarterly_dividend_income?: number; // $1000 기준 3개월 배당 수익
-  six_month_dividend_income?: number; // $1000 기준 6개월 배당 수익
+  // 새로운 수익률 점수 시스템
+  dividend_score?: number; // 0-100점 수익률 점수
+  dividend_return_rate?: number; // 실제 배당 수익률 %
+  stock_price_return_rate?: number; // 주가 수익률 %
+  total_return_rate?: number; // 총 수익률 % (배당+주가)
+  total_score?: number; // 총 점수 (배당+주가)
+  calculation_period_count?: number; // 계산에 사용된 배당 횟수
+  dividend_trend?: "up" | "down" | "stable"; // 배당 트렌드
+  trend_percentage?: number; // 트렌드 변화율
+  calculation_start_date?: string; // 계산 시작일
+  calculation_end_date?: string; // 계산 종료일
   dividends_data?: any[];
   next_ex_date?: string;
   next_pay_date?: string;
@@ -39,11 +47,12 @@ interface DividendStock {
 
 export default function RankingPage() {
   const [stocks, setStocks] = useState<DividendStock[]>([]);
-  const [originalStocks, setOriginalStocks] = useState<DividendStock[]>([]);
+  const [filteredStocks, setFilteredStocks] = useState<DividendStock[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
-  const [period, setPeriod] = useState<"3M" | "6M">("3M");
-  const [includePriceChange, setIncludePriceChange] = useState(false);
+  const [selectedFrequency, setSelectedFrequency] = useState<string>("all");
+  const [totalAnalyzed, setTotalAnalyzed] = useState<number>(0);
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const { formatCurrency, currency } = useCurrency();
 
   // 배당주 데이터 로드
@@ -60,8 +69,9 @@ export default function RankingPage() {
         const data = await response.json();
 
         if (data.success) {
-          setOriginalStocks(data.stocks);
           setStocks(data.stocks);
+          setFilteredStocks(data.stocks);
+          setTotalAnalyzed(data.total_analyzed || data.stocks.length);
         } else {
           throw new Error(data.message || "Failed to fetch dividend stocks");
         }
@@ -76,46 +86,41 @@ export default function RankingPage() {
     };
 
     fetchStocks();
-  }, []); // period 의존성 제거
+  }, []);
 
-  // 기간별 배당금 계산 함수
-  const getDividendIncome = (stock: DividendStock) => {
-    if (period === "6M") {
-      // 6개월 데이터가 없으면 3개월 데이터의 2배로 추정 (임시)
-      return (
-        stock.six_month_dividend_income ||
-        (stock.quarterly_dividend_income || 0) * 2
-      );
+  // 배당 주기별 필터링
+  useEffect(() => {
+    if (selectedFrequency === "all") {
+      setFilteredStocks(stocks);
     } else {
-      return stock.quarterly_dividend_income || 0;
+      const filtered = stocks.filter(
+        (stock) => stock.dividend_frequency === selectedFrequency,
+      );
+      setFilteredStocks(filtered);
+    }
+  }, [stocks, selectedFrequency]);
+
+  // 실시간 카운트다운을 위한 타이머
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // 1분마다 업데이트
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // 배당 트렌드 아이콘 반환
+  const getTrendIcon = (trend: "up" | "down" | "stable" | undefined) => {
+    switch (trend) {
+      case "up":
+        return <span className="text-red-500">▲</span>;
+      case "down":
+        return <span className="text-blue-500">▼</span>;
+      case "stable":
+      default:
+        return <span className="text-gray-500">—</span>;
     }
   };
-
-  // 기간 변경 및 총수익률 포함 여부에 따른 랭킹 재정렬
-  useEffect(() => {
-    if (originalStocks.length === 0) return;
-
-    const sortedStocks = [...originalStocks].sort((a, b) => {
-      const aDividend = getDividendIncome(a);
-      const bDividend = getDividendIncome(b);
-
-      if (includePriceChange) {
-        // 총수익률 포함: 배당금 + 주가 변동 수익
-        const aPriceChange = calculateStockPriceChange(a);
-        const bPriceChange = calculateStockPriceChange(b);
-
-        const aTotalReturn = aDividend + (aPriceChange?.priceChangeAmount || 0);
-        const bTotalReturn = bDividend + (bPriceChange?.priceChangeAmount || 0);
-
-        return bTotalReturn - aTotalReturn;
-      } else {
-        // 배당금만: 기간별 배당금으로 정렬
-        return bDividend - aDividend;
-      }
-    });
-
-    setStocks(sortedStocks);
-  }, [includePriceChange, originalStocks, period]);
 
   // 수익률 배지 색상
   const getYieldBadgeColor = (yield_rate?: number) => {
@@ -142,58 +147,62 @@ export default function RankingPage() {
     return freqMap[frequency] || frequency;
   };
 
-  // 기간별 주가 기준 주식 가격 차익 계산
-  const calculateStockPriceChange = (stock: DividendStock) => {
-    const pastPrice =
-      period === "6M"
-        ? stock.six_months_ago_price
-        : stock.three_months_ago_price;
+  // 배당락일까지 남은 시간 계산
+  const getTimeUntilExDate = (exDateString?: string) => {
+    if (!exDateString) return null;
+    
+    const now = new Date();
+    const exDate = new Date(exDateString + 'T21:00:00+09:00'); // 한국시간 오후 9시 (미국 동부시간 오후 4시)
+    const diffMs = exDate.getTime() - now.getTime();
+    
+    if (diffMs <= 0) return null; // 이미 지났음
+    
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    return { days, hours, minutes };
+  };
 
-    if (!stock.current_price || !pastPrice) {
-      // 6개월 데이터가 없으면 3개월 데이터 사용하여 추정
-      if (
-        period === "6M" &&
-        stock.three_months_ago_price &&
-        stock.current_price
-      ) {
-        console.log(`Using 3M price for 6M calculation for ${stock.ticker}`);
-        const baseInvestment = 1000;
-        const shares = baseInvestment / stock.three_months_ago_price;
-        const pastStockValue = shares * stock.three_months_ago_price;
-        const currentStockValue = shares * stock.current_price;
-        const priceChangeAmount = currentStockValue - pastStockValue;
-        const priceChangePercent = (priceChangeAmount / pastStockValue) * 100;
-
-        return {
-          priceChangeAmount: priceChangeAmount * 2, // 6개월 추정 (2배)
-          priceChangePercent: priceChangePercent * 2,
-          shares,
-          threeMonthsAgoPrice: stock.three_months_ago_price,
-        };
-      }
-      return null;
-    }
-
-    // 기준 투자금액 (USD 기준 $1000)
-    const baseInvestment = 1000;
-
-    // 기간 전 구매 가능한 주식 수
-    const shares = baseInvestment / pastPrice;
-
-    // 기간 전 주식 가치 vs 현재 주식 가치
-    const pastStockValue = shares * pastPrice; // = baseInvestment (1000)
-    const currentStockValue = shares * stock.current_price;
-
-    // 주식 가격 차익 계산
-    const priceChangeAmount = currentStockValue - pastStockValue;
-    const priceChangePercent = (priceChangeAmount / pastStockValue) * 100;
-
+  // 배당락일 시간 포맷팅 (한국시간 기준)
+  const formatExDateTime = (exDateString?: string) => {
+    if (!exDateString) return null;
+    
+    const exDate = new Date(exDateString + 'T21:00:00+09:00');
     return {
-      priceChangeAmount,
-      priceChangePercent,
-      shares,
-      threeMonthsAgoPrice: pastPrice,
+      date: exDate.toLocaleDateString('ko-KR', { 
+        month: 'short', 
+        day: 'numeric' 
+      }),
+      time: '21:00', // 한국시간 오후 9시 (미국 동부시간 오후 4시)
+      dayOfWeek: exDate.toLocaleDateString('ko-KR', { weekday: 'short' })
     };
+  };
+
+  // 점수에 따른 색상 클래스 반환
+  const getScoreColor = (score?: number) => {
+    if (!score && score !== 0) return "text-gray-500 dark:text-gray-400";
+    
+    if (score >= 80) return "text-purple-700 dark:text-purple-300"; // 최우수
+    if (score >= 60) return "text-purple-600 dark:text-purple-400"; // 우수  
+    if (score >= 40) return "text-purple-500 dark:text-purple-500"; // 양호
+    if (score >= 0) return "text-gray-600 dark:text-gray-400";      // 저조
+    if (score >= -39) return "text-red-600 dark:text-red-400";      // 손실
+    if (score >= -79) return "text-red-700 dark:text-red-300";      // 큰손실
+    return "text-red-800 dark:text-red-200";                        // 위험
+  };
+
+  // 점수에 따른 이모지 반환
+  const getScoreEmoji = (score?: number) => {
+    if (!score && score !== 0) return "";
+    
+    if (score >= 80) return "🔥";      // 최우수: 불타는 아이콘
+    if (score >= 60) return "⭐";      // 우수: 별
+    if (score >= 40) return "👍";      // 양호: 엄지척
+    if (score >= 0) return "😐";       // 저조: 무표정
+    if (score >= -39) return "😟";     // 손실: 걱정
+    if (score >= -79) return "😰";     // 큰손실: 식은땀
+    return "💀";                       // 위험: 해골
   };
 
   if (loading) {
@@ -233,65 +242,137 @@ export default function RankingPage() {
             배당주 랭킹
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            {currency === "USD"
-              ? `$1,000 투자 시 ${period === "3M" ? "3개월" : "6개월"}간 예상 배당 수익 기준 랭킹`
-              : `₩1,300,000 투자 시 ${period === "3M" ? "3개월" : "6개월"}간 예상 배당 수익 기준 랭킹`}
+            총 수익률 점수 기준 랭킹 (12개월 분석, 배당 + 주가)
           </p>
+          
+          {/* 점수 범례 */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+            <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">📊 점수 해석 가이드</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 bg-purple-600 rounded-full"></span>
+                  <span className="text-purple-700 dark:text-purple-300 font-medium">80~100점: 🔥 최우수</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 bg-purple-500 rounded-full"></span>
+                  <span className="text-purple-600 dark:text-purple-400 font-medium">60~79점: ⭐ 우수</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 bg-purple-400 rounded-full"></span>
+                  <span className="text-purple-500 dark:text-purple-500 font-medium">40~59점: 👍 양호</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 bg-gray-400 rounded-full"></span>
+                  <span className="text-gray-600 dark:text-gray-400 font-medium">0~39점: 😐 저조</span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 bg-red-400 rounded-full"></span>
+                  <span className="text-red-600 dark:text-red-400 font-medium">-1~-39점: 😟 손실</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 bg-red-500 rounded-full"></span>
+                  <span className="text-red-700 dark:text-red-300 font-medium">-40~-79점: 😰 큰손실</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 bg-red-600 rounded-full"></span>
+                  <span className="text-red-800 dark:text-red-200 font-medium">-80~-100점: 💀 위험</span>
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  12개월 기준 총 수익률 = (현재주가 + 받은배당금 - 초기주가) ÷ 초기주가
+                </div>
+              </div>
+            </div>
+          </div>
 
-          {/* 필터 컨트롤 */}
-          <div className="flex flex-wrap items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          {/* 수익률 표시 설명 */}
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4">
+            <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-2">💡 수익률 표시 설명</h4>
+            <div className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
+              <div><strong>총 수익률 124.79%</strong> → $1,000 투자 시 $2,247.90 가치 (배당금 $837 + 주가상승 $411 포함)</div>
+              <div><strong>배당 83.7% | 주가 +41.1%</strong> → 배당금으로 83.7%, 주가상승으로 41.1% 기여 (개별 표시용)</div>
+              <div><strong>10회 배당 기준 (+26.5%)</strong> → 10번의 배당을 받았으며, 이전 기간 대비 배당금이 평균 26.5% 증가</div>
+              <div className="flex items-center gap-1 mt-2">
+                <span className="text-blue-500">▼</span> <span>배당 감소 추세</span>
+                <span className="text-red-500 ml-3">▲</span> <span>배당 증가 추세</span>
+                <span className="text-gray-500 ml-3">—</span> <span>배당 안정 추세</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 제외 이유 설명 */}
+          {totalAnalyzed > 0 && stocks.length < totalAnalyzed && (
+            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 mb-4">
+              <div className="flex items-start gap-2">
+                <div className="text-orange-600 dark:text-orange-400 text-sm">
+                  ℹ️{" "}
+                  <span className="font-medium">
+                    일부 주식이 랭킹에서 제외되었습니다:
+                  </span>
+                </div>
+              </div>
+              <ul className="text-xs text-orange-700 dark:text-orange-300 mt-1 ml-4 space-y-1">
+                <li>• 배당 기록이 2회 미만인 경우 (점수 계산 불가)</li>
+                <li>• 주가 데이터가 부족한 경우 (시작/현재 가격 없음)</li>
+                <li>• API 호출 실패로 데이터를 가져올 수 없는 경우</li>
+                <li>• ✅ 마이너스 점수 주식은 포함되어 표시됩니다</li>
+              </ul>
+            </div>
+          )}
+
+          {/* 배당 주기 필터 */}
+          <div className="flex items-center gap-3 mb-4">
             <div className="flex items-center gap-2">
-              <FilterIcon className="w-4 h-4 text-gray-500" />
+              <FilterIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                필터
+                배당 주기:
               </span>
             </div>
-
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 dark:text-gray-400">
-                기간:
-              </label>
-              <Select
-                value={period}
-                onValueChange={(value: "3M" | "6M") => setPeriod(value)}
-              >
-                <SelectTrigger className="w-24 h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="3M">3개월</SelectItem>
-                  <SelectItem value="6M">6개월</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 dark:text-gray-400">
-                총수익률 포함:
-              </label>
-              <Button
-                variant={includePriceChange ? "default" : "outline"}
-                size="sm"
-                onClick={() => setIncludePriceChange(!includePriceChange)}
-                className="h-8 px-3"
-              >
-                {includePriceChange ? "ON" : "OFF"}
-              </Button>
-            </div>
+            <Select
+              value={selectedFrequency}
+              onValueChange={setSelectedFrequency}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체</SelectItem>
+                <SelectItem value="1W">주간 배당</SelectItem>
+                <SelectItem value="4W">4주 배당</SelectItem>
+                <SelectItem value="1M">월 배당</SelectItem>
+                <SelectItem value="3M">분기 배당</SelectItem>
+                <SelectItem value="6M">반년 배당</SelectItem>
+                <SelectItem value="1Y">연 배당</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              ({filteredStocks.length}개)
+              {totalAnalyzed > 0 &&
+                stocks.length < totalAnalyzed &&
+                selectedFrequency === "all" && (
+                  <span className="ml-2 text-xs text-orange-600 dark:text-orange-400">
+                    • 분석 대상 {totalAnalyzed}개 중 데이터 부족으로 {totalAnalyzed - stocks.length}개 제외
+                  </span>
+                )}
+            </span>
           </div>
         </div>
 
-        {stocks.length === 0 ? (
+        {filteredStocks.length === 0 ? (
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardContent className="text-center py-12">
               <div className="text-gray-600 dark:text-gray-400">
-                배당주 데이터가 없습니다.
+                {selectedFrequency === "all"
+                  ? "배당주 데이터가 없습니다."
+                  : "해당 배당 주기의 데이터가 없습니다."}
               </div>
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-3">
-            {stocks.map((stock, index) => (
+            {filteredStocks.map((stock, index) => (
               <Card
                 key={stock.ticker}
                 className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow !py-0"
@@ -331,63 +412,118 @@ export default function RankingPage() {
                           {stock.name}
                         </p>
 
-                        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <CalendarIcon className="w-3 h-3" />
-                            {getFrequencyText(stock.dividend_frequency)} 배당
-                          </span>
-                          {stock.next_ex_date && (
-                            <span>다음 배당락일: {stock.next_ex_date}</span>
-                          )}
+                        <div className="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-500">
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center gap-1">
+                              <CalendarIcon className="w-3 h-3" />
+                              {getFrequencyText(stock.dividend_frequency)} 배당
+                            </span>
+                          </div>
+                          
+                          {/* 배당락일과 시간 */}
+                          {stock.next_ex_date && (() => {
+                            const dateTime = formatExDateTime(stock.next_ex_date);
+                            const countdown = getTimeUntilExDate(stock.next_ex_date);
+                            
+                            return (
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-1">
+                                  <ClockIcon className="w-3 h-3" />
+                                  <span className="font-medium">
+                                    {dateTime?.date} ({dateTime?.dayOfWeek}) {dateTime?.time}
+                                  </span>
+                                </div>
+                                {countdown && (
+                                  <div className="text-xs text-orange-600 dark:text-orange-400 font-medium">
+                                    ⏰ {countdown.days}일 {countdown.hours}시간 {countdown.minutes}분 남음
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
 
-                    {/* 수익 정보 */}
+                    {/* 총합 점수 정보 */}
                     <div className="text-right">
-                      {/* 3개월 배당금 총합 */}
+                      {/* 총 점수 */}
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                         <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                          총 배당금
+                          총 점수
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className={`text-lg font-bold ${getScoreColor(stock.total_score)}`}>
+                            {getScoreEmoji(stock.total_score)} {stock.total_score?.toFixed(1) || "0.0"}점
+                          </span>
+                          {getTrendIcon(stock.dividend_trend)}
+                        </div>
+                      </div>
+
+                      {/* 총 수익률 */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-1">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                          총 수익률
                         </span>
                         <span
                           className={`text-lg font-bold ${
-                            getDividendIncome(stock) >= 0
+                            (stock.total_return_rate || 0) >= 0
                               ? "text-green-600 dark:text-green-400"
                               : "text-red-600 dark:text-red-400"
                           }`}
                         >
-                          {getDividendIncome(stock) >= 0 ? "+" : ""}
-                          {formatCurrency(getDividendIncome(stock))}
+                          {(stock.total_return_rate || 0) >= 0 ? "+" : ""}
+                          {stock.total_return_rate?.toFixed(2) || "0.00"}%
                         </span>
                       </div>
 
-                      {/* 주식 가격 차익 */}
-                      {(() => {
-                        const priceChange = calculateStockPriceChange(stock);
-                        if (!priceChange) return null;
-
-                        const isPositive = priceChange.priceChangeAmount >= 0;
-                        return (
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-1.5">
-                            <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                              총 수익금
-                            </span>
+                      {/* 세부 수익률 */}
+                      <div className="text-xs mb-2">
+                        <span className="text-gray-500 dark:text-gray-400">
+                          배당{" "}
+                        </span>
+                        <span
+                          className={`${
+                            (stock.dividend_return_rate || 0) >= 0
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-red-600 dark:text-red-400"
+                          }`}
+                        >
+                          {stock.dividend_return_rate?.toFixed(1) || "0.0"}%
+                        </span>
+                        <span className="text-gray-500 dark:text-gray-400">
+                          {" "}
+                          | 주가{" "}
+                        </span>
+                        <span
+                          className={`${
+                            (stock.stock_price_return_rate || 0) >= 0
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-red-600 dark:text-red-400"
+                          }`}
+                        >
+                          {(stock.stock_price_return_rate || 0) >= 0 ? "+" : ""}
+                          {stock.stock_price_return_rate?.toFixed(1) || "0.0"}%
+                        </span>
+                        <br />
+                        <span className="text-gray-500 dark:text-gray-400">
+                          {stock.calculation_period_count || 0}회 배당 기준
+                          {stock.trend_percentage && (
                             <span
-                              className={`text-lg font-bold ${
-                                isPositive
+                              className={`ml-1 ${
+                                stock.trend_percentage > 0
                                   ? "text-green-600 dark:text-green-400"
-                                  : "text-red-600 dark:text-red-400"
+                                  : stock.trend_percentage < 0
+                                    ? "text-red-600 dark:text-red-400"
+                                    : "text-gray-500"
                               }`}
                             >
-                              {isPositive ? "+" : "-"}
-                              {formatCurrency(
-                                Math.abs(priceChange.priceChangeAmount),
-                              )}
+                              ({stock.trend_percentage > 0 ? "+" : ""}
+                              {stock.trend_percentage.toFixed(1)}%)
                             </span>
-                          </div>
-                        );
-                      })()}
+                          )}
+                        </span>
+                      </div>
 
                       <div className="flex items-center justify-end gap-2">
                         {stock.current_price && (

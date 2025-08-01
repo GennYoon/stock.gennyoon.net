@@ -13,11 +13,13 @@
       "WebFetch(domain:graniteshares.com)",
       "WebFetch(domain:api.polygon.io)",
       "WebFetch(domain:polygon.io)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "mcp__sequential-thinking__sequentialthinking"
     ]
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "supabase"
-  ]
+  ],
+  "$schema": "https://json.schemastore.org/claude-code-settings.json"
 }
