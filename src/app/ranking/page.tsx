@@ -242,7 +242,7 @@ export default function RankingPage() {
             배당주 랭킹
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            총 수익률 점수 기준 랭킹 (12개월 분석, 배당 + 주가)
+            12개월 총 수익률 랭킹 (배당수익 + 주가수익)
           </p>
           
           {/* 점수 범례 */}
@@ -299,6 +299,9 @@ export default function RankingPage() {
                 <span className="text-red-500 ml-3">▲</span> <span>배당 증가 추세</span>
                 <span className="text-gray-500 ml-3">—</span> <span>배당 안정 추세</span>
               </div>
+              <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                ※ 배당 트렌드 색상은 미국 시장 기준 (상승=빨강, 하락=파랑)
+              </div>
             </div>
           </div>
 
@@ -317,7 +320,7 @@ export default function RankingPage() {
                 <li>• 배당 기록이 2회 미만인 경우 (점수 계산 불가)</li>
                 <li>• 주가 데이터가 부족한 경우 (시작/현재 가격 없음)</li>
                 <li>• API 호출 실패로 데이터를 가져올 수 없는 경우</li>
-                <li>• ✅ 마이너스 점수 주식은 포함되어 표시됩니다</li>
+                <li>• ✅ 손실 주식도 모두 포함하여 표시합니다</li>
               </ul>
             </div>
           )}

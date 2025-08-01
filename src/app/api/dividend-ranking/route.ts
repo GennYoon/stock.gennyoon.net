@@ -249,8 +249,8 @@ export async function GET(request: NextRequest) {
                 const firstHalf = calculationDividends.slice(Math.floor(calculationDividends.length / 2));
                 const secondHalf = calculationDividends.slice(0, Math.floor(calculationDividends.length / 2));
                 
-                const firstHalfAvg = firstHalf.reduce((sum, div) => sum + (div.cash_amount || 0), 0) / firstHalf.length;
-                const secondHalfAvg = secondHalf.reduce((sum, div) => sum + (div.cash_amount || 0), 0) / secondHalf.length;
+                const firstHalfAvg = firstHalf.reduce((sum: number, div: any) => sum + (div.cash_amount || 0), 0) / firstHalf.length;
+                const secondHalfAvg = secondHalf.reduce((sum: number, div: any) => sum + (div.cash_amount || 0), 0) / secondHalf.length;
                 
                 const trendChange = ((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100;
                 
